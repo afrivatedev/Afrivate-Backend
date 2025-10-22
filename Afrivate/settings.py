@@ -145,5 +145,5 @@ EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend' # to delete soo
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOWED_ORIGINS = [
      # "http://localhost:3000",
-    "https://joshuaimmortal.github.io/Afrivate/"
+    "https://joshuaimmortal.github.io",
 ]
