@@ -11,8 +11,10 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
-#from import dotenv
+# from dotenv import load_dotenv
 import os 
+
+# load_dotenv() 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -27,7 +29,7 @@ SECRET_KEY = 'REDACTED-OLD-DJANGO-KEY'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]  # to be changed in production
 
 
 # Application definition
@@ -41,6 +43,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'Authentication',
     'rest_framework',
+    "corsheaders",
 ]
 
 MIDDLEWARE = [
@@ -51,6 +54,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    "corsheaders.middleware.CorsMiddleware",
 ]
 
 ROOT_URLCONF = 'Afrivate.urls'
@@ -137,3 +141,9 @@ EMAIL_HOST_PASSWORD = os.getenv("GMAIL_PWD")  # Your email password or app passw
 DEFAULT_FROM_EMAIL = 'Afrivate Support <noreply@afrivate.com>'
 
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend' # to delete soon 
+
+CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOWED_ORIGINS = [
+     # "http://localhost:3000",
+    "https://joshuaimmortal.github.io/Afrivate/"
+]
