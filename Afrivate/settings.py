@@ -48,13 +48,13 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    "corsheaders.middleware.CorsMiddleware",
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    "corsheaders.middleware.CorsMiddleware",
 ]
 
 ROOT_URLCONF = 'Afrivate.urls'
@@ -142,8 +142,9 @@ DEFAULT_FROM_EMAIL = 'Afrivate Support <noreply@afrivate.com>'
 
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend' # to delete soon 
 
-CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOWED_ORIGINS = [
-     # "http://localhost:3000",
+    # "http://localhost:3000",
     "https://joshuaimmortal.github.io",
 ]
+
+CORS_ALLOW_ALL_ORIGINS = False
