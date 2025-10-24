@@ -1,5 +1,6 @@
 from rest_framework import serializers, status
 from .models import CustomUser
+from django.contrib.auth import authenticate
 
 class CustomUserRegistrationSerializer(serializers.ModelSerializer):
     password2 = serializers.CharField(write_only=True)
@@ -33,27 +34,11 @@ class CustomUserLoginSerializer(serializers.Serializer):
         email = data.get('email')
         password = data.get('password')
         
-        if not email or not password:
-            raise serializers.ValidationError(
-                {"message": "Email and password are required"}
-            )
-        
-        user = CustomUser.objects.filter(email=email).first()
-        
+        user = authenticate(email=email, password=password) # assuming username is email to be changed if needed
+        # print(user)
         if not user:
             raise serializers.ValidationError(
-                {"message": "Invalid email or password"}
-            )
-        
-        if not user.check_password(password):
-            raise serializers.ValidationError(
-                {"message": "Invalid email or password"}
-            )
-        
-        if not user.is_active:
-            raise serializers.ValidationError(
-                {"message": "User account is disabled"}
-            )
+                {"error": "Invalid email or password"}, code=status.HTTP_401_UNAUTHORIZED)
         
         # Store user in context for use in the view
         data['user'] = user
@@ -81,3 +66,18 @@ class ResetPasswordSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 {"password": "Passwords do not match"}, code=status.HTTP_400_BAD_REQUEST)
         return data
+
+class ChangePasswordSerializer(serializers.Serializer):
+    pass
+
+class ProfileSerializer(serializers.ModelSerializer):
+    pass
+
+'''
+class CustomTokenObtainPairSerializer(serializers.Serializer):
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        token['role'] = user.role  # add custom claim
+        token['email'] = user.email
+        return token'''

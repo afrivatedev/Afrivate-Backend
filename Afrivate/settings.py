@@ -36,6 +36,7 @@ ALLOWED_HOSTS = ["*"]  # to be changed in production
 
 INSTALLED_APPS = [
     'django.contrib.admin',
+    'rest_framework_simplejwt',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
@@ -44,6 +45,7 @@ INSTALLED_APPS = [
     'Authentication',
     'rest_framework',
     "corsheaders",
+    'drf_yasg',
 ]
 
 MIDDLEWARE = [
@@ -131,6 +133,11 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'Authentication.CustomUser'
 
+AUTHENTICATION_BACKENDS = [
+    'Authentication.backends.CustomAuthenticationBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]
+
 # Email configuration
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'  # Use your email provider's SMTP server
@@ -141,6 +148,12 @@ EMAIL_HOST_PASSWORD = os.getenv("GMAIL_PWD")  # Your email password or app passw
 DEFAULT_FROM_EMAIL = 'Afrivate Support <noreply@afrivate.com>'
 
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend' # to delete soon 
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    )
+}
 
 CORS_ALLOWED_ORIGINS = [
     # "http://localhost:3000",

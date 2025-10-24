@@ -1,17 +1,21 @@
-# from django.shortcuts import render
 from rest_framework import generics, status
 from rest_framework.views import APIView
-from .serializers import CustomUserRegistrationSerializer, CustomUserLoginSerializer
-from .models import CustomUser
 from rest_framework.response import Response
-from django.contrib.auth import authenticate
+# from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework_simplejwt.tokens import RefreshToken
+from .models import CustomUser
+from .serializers import CustomUserRegistrationSerializer, CustomUserLoginSerializer
 from .serializers import ForgotPasswordSerializer, ResetPasswordSerializer
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
 from django.core.mail import send_mail
 from django.conf import settings
+from django.http import HttpResponse
+
 # Create your views here.
+def index(request):
+    return HttpResponse("Welcome")
 
 # user registration view
 class RegisterView(generics.CreateAPIView):
@@ -41,19 +45,29 @@ class LoginView(generics.GenericAPIView):
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-
         user = serializer.validated_data['user']
 
-        if user:
-            return Response({
-                "message": "Login successful",
-                "user": {
-                    "username": user.username,
-                    "email": user.email,
-                    # "role": user.role
-                }
-            }, status=status.HTTP_200_OK)
-        return Response({"message": "Invalid credentials"}, status=status.HTTP_400_BAD_REQUEST)
+        # Generate JWT token
+        refresh = RefreshToken.for_user(user)
+        access = refresh.access_token
+
+        # Adding Custom claims
+        if user.role == 'enabler':
+            access['access_level'] = 'high'
+        elif user.role == 'pathfinder':
+            access['access_level'] = 'basic'
+        
+        # print(  )
+        return Response({
+            "message": "Login successful",
+            "user": {
+                "username": user.username,
+                "email": user.email,
+                "role": user.role
+            },
+                "refresh": str(refresh),
+                "access": str(access)
+        }, status=status.HTTP_200_OK)
     
 # password forgot view
 class ForgotPasswordView(generics.GenericAPIView):
@@ -103,7 +117,7 @@ class ResetPasswordView(generics.GenericAPIView):
     serializer_class = ResetPasswordSerializer
     
     def post(self, request, *args, **kwargs):
-        print(request.data)
+        # print(request.data)
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -133,7 +147,11 @@ class ResetPasswordView(generics.GenericAPIView):
                 {"error": "Invalid reset link"}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
-    
+
+# user change password view
+class ChangePasswordView(generics.UpdateAPIView):
+    pass  # Implementation goes here
+
 # user profile view
 class ProfileView(generics.RetrieveAPIView):
     pass  # Implementation goes here
@@ -142,9 +160,6 @@ class ProfileView(generics.RetrieveAPIView):
 class LogoutView(APIView):
     pass # Implementation goes here
 
-
-
 # user deletion view
 class DeleteUserView(generics.DestroyAPIView):  
     pass  # Implementation goes here
-
