@@ -7,7 +7,6 @@ from .models import CustomUser
 from .serializers import *
 from django.contrib.auth.tokens import default_token_generator
 # from django.utils.encoding import force_bytes, force_str
-from django.conf import settings
 from django.http import HttpResponse
 import logging
 from .utils import sendotp_via_email
@@ -40,6 +39,7 @@ class RegisterView(generics.CreateAPIView):
 class LoginView(generics.GenericAPIView):
     serializer_class = CustomUserLoginSerializer
     permission_classes = [AllowAny]
+    logging.basicConfig(level=logging.INFO)
     
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -47,13 +47,8 @@ class LoginView(generics.GenericAPIView):
         user = serializer.validated_data['user']
 
         # Generate JWT token
-        user.tokens()  # to create tokens method in model
-
-        # Adding Custom claims
-        if user.role == 'enabler':
-            access['access_level'] = 'high'  # this would probably be rewritten to integrate in JWT payload
-        elif user.role == 'pathfinder':
-            access['access_level'] = 'basic'
+        tokens = user.tokens()  # to create tokens method in model
+        logging.info(f"Generating tokens for user {user.id}")
         
         return Response({
             "message": "Login successful",
@@ -62,8 +57,8 @@ class LoginView(generics.GenericAPIView):
                 "email": user.email,
                 "role": user.role
             },
-            "refresh": str(user.tokens()['refresh_token']),
-            "access": str(user.tokens()['access_token'])
+            "refresh": tokens['refresh_token'],
+            "access": tokens['access_token']
         }, status=status.HTTP_200_OK)
     
 # password forgot view
@@ -153,13 +148,19 @@ class LogoutView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
+        logging.info(f"User {request.user.id} is logging out.")
         try:
             refresh_token = request.data["refresh"]
+            if not refresh_token:
+                logging.error(f"Logout error for user {request.user.id}: No refresh token provided.")
+                return Response({"error": "No refresh token provided"}, status=status.HTTP_400_BAD_REQUEST)
+            
             token = RefreshToken(refresh_token)
             token.blacklist()
 
             logging.info(f"User logged out successfully: {request.user.id}")
             return Response({"message": "Logout successful"}, status=status.HTTP_205_RESET_CONTENT)
+        
         except Exception as e:
             logging.error(f"Logout error for user {request.user.id}: {e}")
             return Response({"error": "Invalid token"}, status=status.HTTP_400_BAD_REQUEST)
@@ -172,6 +173,7 @@ class ProfileView(generics.RetrieveAPIView):
 class DeleteUserView(generics.DestroyAPIView):  
     pass  # Implementation goes here       
 
+# otp verify view
 class OtpVerifyView(generics.GenericAPIView): 
     serializer_class = VerifyOTPSerializer  
     # permission_classes = [IsAuthenticated]

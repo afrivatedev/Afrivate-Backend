@@ -22,10 +22,15 @@ class CustomUser(AbstractUser):
     REQUIRED_FIELDS = ['username','role']
 
     def tokens(self):
-        refresh_token = RefreshToken.for_user(self)
+        refresh = RefreshToken.for_user(self)
+
+        # attach custom claims
+        refresh['role'] = self.role
+        refresh['email'] = self.email
+
         return {
-            "refresh_token": str(refresh_token),
-            "access_token": str(refresh_token.access_token),
+            "refresh_token": str(refresh),
+            "access_token": str(refresh.access_token),
         }
 
     def __str__(self):

@@ -43,7 +43,7 @@ class CustomUserLoginSerializer(serializers.Serializer):
         style ={'input_type': 'password'}, write_only=True)
     
     def validate(self, data):
-        username_or_email = data.get('email')
+        username_or_email = data.get('username_or_email')
         password = data.get('password')
         
         # try with email first
