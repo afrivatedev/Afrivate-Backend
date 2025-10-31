@@ -1,17 +1,16 @@
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-# from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
 from .models import CustomUser
-from .serializers import CustomUserRegistrationSerializer, CustomUserLoginSerializer
-from .serializers import ForgotPasswordSerializer, ResetPasswordSerializer
+from .serializers import *
 from django.contrib.auth.tokens import default_token_generator
-from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
-from django.utils.encoding import force_bytes, force_str
-from django.core.mail import send_mail
+# from django.utils.encoding import force_bytes, force_str
 from django.conf import settings
 from django.http import HttpResponse
+import logging
+from .utils import sendotp_via_email
 
 # Create your views here.
 def index(request):
@@ -19,7 +18,7 @@ def index(request):
 
 # user registration view
 class RegisterView(generics.CreateAPIView):
-    queryset = CustomUser.objects.all()
+    permission_classes = [AllowAny]
     serializer_class = CustomUserRegistrationSerializer
 
     def create(self, request, *args, **kwargs):
@@ -40,7 +39,7 @@ class RegisterView(generics.CreateAPIView):
 # user login view
 class LoginView(generics.GenericAPIView):
     serializer_class = CustomUserLoginSerializer
-    queryset = CustomUser.objects.all()
+    permission_classes = [AllowAny]
     
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -48,16 +47,14 @@ class LoginView(generics.GenericAPIView):
         user = serializer.validated_data['user']
 
         # Generate JWT token
-        refresh = RefreshToken.for_user(user)
-        access = refresh.access_token
+        user.tokens()  # to create tokens method in model
 
         # Adding Custom claims
         if user.role == 'enabler':
-            access['access_level'] = 'high'
+            access['access_level'] = 'high'  # this would probably be rewritten to integrate in JWT payload
         elif user.role == 'pathfinder':
             access['access_level'] = 'basic'
         
-        # print(  )
         return Response({
             "message": "Login successful",
             "user": {
@@ -65,8 +62,8 @@ class LoginView(generics.GenericAPIView):
                 "email": user.email,
                 "role": user.role
             },
-                "refresh": str(refresh),
-                "access": str(access)
+            "refresh": str(user.tokens()['refresh_token']),
+            "access": str(user.tokens()['access_token'])
         }, status=status.HTTP_200_OK)
     
 # password forgot view
@@ -78,51 +75,34 @@ class ForgotPasswordView(generics.GenericAPIView):
         serializer.is_valid(raise_exception=True)
         email = serializer.validated_data['email']
 
+        # send password reset email
         try:
-            user = CustomUser.objects.get(email=email)
-            token = default_token_generator.make_token(user)
-            uid = urlsafe_base64_encode(force_bytes(user.pk))
-
-            # build reset link
-            reset_link = f"http://127.0.0.1:8000/api/auth/reset-password/{uid}/{token}/"
-
             # send email
-            subject = 'Password Reset Request'
-            message = f"""
-            Hi {user.username},
-            You requested a password reset. Click the link below to reset your password:
-             {reset_link}
+            sendotp_via_email(email)
             
-            If you didn't request this, please ignore this email.
-            
-            This link will expire in 24 hours.
-            """
-            
-            send_mail(
-                subject,
-                message,
-                settings.DEFAULT_FROM_EMAIL,
-                [email],
-                fail_silently=False,
-            )
-            print(f"Email sent successfully to {email}")  # For debugging
+            logging.info(f"Email sent successfully to {email}")  # For debugging
+            return Response({"message": f"otp sent."}) # testing
+        except Exception as e:
+            logging.error(f"Error sending email to {email}: {e}")
+            return Response({"error": "Error sending email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-            return Response({"message": f"Password reset link sent with token {token}"})
         except CustomUser.DoesNotExist:
+            logging.warning(f"Password reset requested for non-existent email: {email}")
             pass
-        return Response({"message": "Password reset link sent"}, status=status.HTTP_200_OK)
+        return Response({"message": "If the email exists, a password reset link has been sent."}, status=status.HTTP_200_OK)
 
 # password reset view
 class ResetPasswordView(generics.GenericAPIView):
     serializer_class = ResetPasswordSerializer
+    permission_classes = [IsAuthenticated]
     
     def post(self, request, *args, **kwargs):
-        # print(request.data)
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        uid = serializer.validated_data['uid']
-        token = serializer.validated_data['token']
+        # Generate JWT token
+        user.tokens()  # to create tokens method in model
+
         password = serializer.validated_data['password']
         try:
             # Decode token to get user 
@@ -149,17 +129,66 @@ class ResetPasswordView(generics.GenericAPIView):
             )
 
 # user change password view
-class ChangePasswordView(generics.UpdateAPIView):
-    pass  # Implementation goes here
+class ChangePasswordView(generics.GenericAPIView):
+    serializer_class = ChangePasswordSerializer
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+    
+            user = request.user
+            # new_password = serializer.validated_data['new_password']
+            user.set_password(serializer.validated_data['new_password'])
+            user.save()
+    
+            logging.info(f"Password changed successfully for user {user.id}")
+            return Response(
+                {"message": "Password changed successfully"}, 
+                status=status.HTTP_200_OK
+            )
+
+# user logout view
+class LogoutView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        try:
+            refresh_token = request.data["refresh"]
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+
+            logging.info(f"User logged out successfully: {request.user.id}")
+            return Response({"message": "Logout successful"}, status=status.HTTP_205_RESET_CONTENT)
+        except Exception as e:
+            logging.error(f"Logout error for user {request.user.id}: {e}")
+            return Response({"error": "Invalid token"}, status=status.HTTP_400_BAD_REQUEST)
 
 # user profile view
 class ProfileView(generics.RetrieveAPIView):
     pass  # Implementation goes here
 
-# user logout view
-class LogoutView(APIView):
-    pass # Implementation goes here
-
 # user deletion view
 class DeleteUserView(generics.DestroyAPIView):  
-    pass  # Implementation goes here
+    pass  # Implementation goes here       
+
+class OtpVerifyView(generics.GenericAPIView): 
+    serializer_class = VerifyOTPSerializer  
+    # permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        # Get the verified user from serializer
+        user = serializer.validated_data['user']
+        
+        # Generate tokens
+        tokens = user.tokens()
+        
+        return Response({
+            "success": True,
+            "message": "OTP verified successfully",
+            # "refresh": str(tokens['refresh_token']),
+            "access": str(tokens['access_token'])
+        }, status=status.HTTP_200_OK)

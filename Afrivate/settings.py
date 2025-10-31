@@ -9,12 +9,12 @@ https://docs.djangoproject.com/en/5.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
-
-from pathlib import Path
-# from dotenv import load_dotenv
 import os 
+from pathlib import Path
+from dotenv import load_dotenv
+from datetime import timedelta
 
-# load_dotenv() 
+load_dotenv() 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -24,7 +24,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'REDACTED-OLD-DJANGO-KEY'
+SECRET_KEY = 'REDACTED-OLD-DJANGO-KEY' 
+
+'''
+Generate a new secret key for production and keep it secret.
+from django.core.management.utils import get_random_secret_key
+print(get_random_secret_key()) 
+and set it as an environment variable.
+'''
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -36,16 +43,17 @@ ALLOWED_HOSTS = ["*"]  # to be changed in production
 
 INSTALLED_APPS = [
     'django.contrib.admin',
-    'rest_framework_simplejwt',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'Authentication',
-    'rest_framework',
+    'rest_framework', 
+    'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',
     "corsheaders",
     'drf_yasg',
+    'Authentication',   
 ]
 
 MIDDLEWARE = [
@@ -139,7 +147,7 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 # Email configuration
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'  # Use your email provider's SMTP server
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
@@ -148,11 +156,23 @@ EMAIL_HOST_PASSWORD = os.getenv("GMAIL_PWD")  # Your email password or app passw
 DEFAULT_FROM_EMAIL = 'Afrivate Support <noreply@afrivate.com>'
 
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend' # to delete soon 
+# ACCOUNT_EMAIL_REQUIRED = True
+# ACCOUNT_USERNAME_REQUIRED = False
+# ACCOUNT_AUTHENTICATION_METHOD = 'email'
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     )
+}
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15), # to be changed to hours in production
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7), # to be changed to weeks in production
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'UPDATE_LAST_LOGIN': True,
 }
 
 CORS_ALLOWED_ORIGINS = [
@@ -161,3 +181,17 @@ CORS_ALLOWED_ORIGINS = [
 ]
 
 CORS_ALLOW_ALL_ORIGINS = False
+# CORS_ALLOW_CREDENTIALS = True # for cookies, to be enabled later if needed
+PASSWORD_RESET_TIMEOUT = 86400  # 24 hours in seconds, COULD BE REDUCED FOR BETTER SECURITY
+
+'''
+SECURE_SSL_REDIRECT = True
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = 'DENY'
+SECURE_HSTS_SECONDS = 31536000
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+'''
