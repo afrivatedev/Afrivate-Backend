@@ -38,7 +38,10 @@ Install Dependencies
     pip install -r requirements.txt
 
 Setup Environment Variables
-Create a .env file in the project root and add:
+# Copy environment file
+    cp .env.example .env
+    
+Add...
 
     SECRET_KEY=your_django_secret_key
     DEBUG=True
