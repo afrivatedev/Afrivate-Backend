@@ -1,0 +1,16 @@
+Dockerfile
+docker-compose-deploy.yml
+docker-compose.yml
+
+git_workflow.md
+README.md
+.gitignore
+.gitworkflows/
+.docker
+
+**/__pycache__
+
+.venv
+.env
+.venv/
+env
