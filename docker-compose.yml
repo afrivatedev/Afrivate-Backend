@@ -7,7 +7,7 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - .:/app
+      - ./app:/app
       - dev-static-data:/vol/web
     command: >
       sh -c "python manage.py wait_for_db &&
@@ -20,22 +20,19 @@ services:
       - DB_PASS=changeme
       - DEBUG=1
     depends_on:
-        #this basically tells the app to wait for the db to start before starting
       - db
-  #everything below is about our database
+
   db:
-  #the image it would run with from dockerhub
-    image: postgres:13-alpine
+    image: postgres:17-alpine3.22
     volumes:
       - dev-db-data:/var/lib/postgresql/data
-      #the environment variables
     environment:
       - POSTGRES_DB=devdb
       - POSTGRES_USER=devuser
       - POSTGRES_PASSWORD=changeme
     ports:
-      - "5433:5432"     # this exposes our 5433 on local machine, so that we can access the db locally
+      - "5433:5432"
 
 volumes:
-  dev-db-data:
   dev-static-data:
+  dev-db-data:

@@ -1,5 +1,5 @@
 .idea
-env
+.env
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -142,9 +142,9 @@ celerybeat.pid
 .env
 .envrc
 .venv
-env/
+.env/
 venv/
-ENV/
+.env/
 env.bak/
 venv.bak/
 
