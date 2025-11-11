@@ -34,7 +34,7 @@ and set it as an environment variable.
 '''
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = bool(int(os.environ.get("DEBUG", 0)))
 
 ALLOWED_HOSTS = ["*"]  # to be changed in production
 
@@ -48,12 +48,14 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
     'rest_framework', 
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
     "corsheaders",
     'drf_yasg',
-    'Authentication',   
+    'Authentication',
+    'database',
 ]
 
 MIDDLEWARE = [
@@ -92,9 +94,12 @@ WSGI_APPLICATION = 'Afrivate.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+         'ENGINE': 'django.db.backends.postgresql',
+         'HOST': os.environ.get('DB_HOST'),
+         'NAME': os.environ.get('DB_NAME'),
+         'USER': os.environ.get('DB_USER'),
+         'PASSWORD': os.environ.get('DB_PASS'),
+     },
 }
 
 
@@ -139,7 +144,7 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-AUTH_USER_MODEL = 'Authentication.CustomUser'
+AUTH_USER_MODEL = 'database.CustomUser'
 
 AUTHENTICATION_BACKENDS = [
     'Authentication.backends.CustomAuthenticationBackend',

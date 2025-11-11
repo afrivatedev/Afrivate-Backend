@@ -12,15 +12,17 @@ ENV PYTHONUNBUFFERED=1
 #also it choses the port to expose
 COPY ./requirements.txt /tmp/requirements.txt
 COPY ./requirements.dev.txt /tmp/requirements.dev.txt
-COPY . /Afrivate-Backend
+COPY ./app /app
 
-WORKDIR /Afrivate-backend
+WORKDIR /app
 EXPOSE 8000
 
 
 
 ARG DEV=false
 
+# zlib, jpeg are dependency for pillow
+# and the rest are for Psycopg2
 RUN python -m venv /py && \
     /py/bin/pip install --upgrade pip && \
     apk add --update --no-cache postgresql-client jpeg-dev && \

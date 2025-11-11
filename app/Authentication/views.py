@@ -1,10 +1,14 @@
+from django.utils.encoding import force_str
+
+from django.utils.http import urlsafe_base64_decode
+
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import CustomUser
-from .serializers import *
+from database.models import CustomUser
+from database.serializers import *
 from django.contrib.auth.tokens import default_token_generator
 # from django.utils.encoding import force_bytes, force_str
 from django.http import HttpResponse

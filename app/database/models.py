@@ -3,6 +3,7 @@ from django.contrib.auth.models import AbstractUser
 from django.utils import timezone
 from rest_framework_simplejwt.tokens import RefreshToken
 
+
 # Create your models here.
 class CustomUser(AbstractUser):
     ROLE_CHOICES = (
@@ -19,7 +20,7 @@ class CustomUser(AbstractUser):
 
     # USERNAME_FIELD = 'email_or_username' # i cant do this in abstract user
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['username','role']
+    REQUIRED_FIELDS = ['username', 'role']
 
     def tokens(self):
         refresh = RefreshToken.for_user(self)
@@ -35,7 +36,8 @@ class CustomUser(AbstractUser):
 
     def __str__(self):
         return self.username
-    
+
+
 class OtpToken(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
     otp = models.CharField(max_length=6)
