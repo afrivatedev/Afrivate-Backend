@@ -7,8 +7,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
-from database.models import CustomUser
-from database.serializers import *
+from user_database.models import CustomUser
+from user_database.serializers import *
 from django.contrib.auth.tokens import default_token_generator
 # from django.utils.encoding import force_bytes, force_str
 from django.http import HttpResponse
