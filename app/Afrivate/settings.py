@@ -55,7 +55,7 @@ INSTALLED_APPS = [
     "corsheaders",
     'drf_yasg',
     'Authentication',
-    'database',
+    'user_database',
 ]
 
 MIDDLEWARE = [
@@ -144,7 +144,7 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-AUTH_USER_MODEL = 'database.CustomUser'
+AUTH_USER_MODEL = 'user_database.CustomUser'
 
 AUTHENTICATION_BACKENDS = [
     'Authentication.backends.CustomAuthenticationBackend',

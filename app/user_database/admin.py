@@ -1,5 +1,5 @@
 from django.contrib import admin
-from database import models
+from user_database import models
 
 # Register your models here.
 
