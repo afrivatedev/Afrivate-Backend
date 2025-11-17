@@ -31,6 +31,8 @@ class CustomUserRegistrationSerializer(serializers.ModelSerializer):
 
     # Update serializers can be added here for profile updates, password changes, etc.
     def validate_password(self, value):
+        """This would validate the password like checking its strength and length.
+        DRF takes the password field automatically and runs this method on it."""
         try:
             validate_password(value)
         except DjangoValidationError as e:

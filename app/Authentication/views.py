@@ -1,18 +1,22 @@
-from django.utils.encoding import force_str
+import logging
 
+from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
+from django.http import HttpResponse
 
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
+
 from user_database.models import CustomUser
 from user_database.serializers import *
+
 from django.contrib.auth.tokens import default_token_generator
 # from django.utils.encoding import force_bytes, force_str
-from django.http import HttpResponse
-import logging
+
+
 from .utils import sendotp_via_email
 
 # Create your views here.
@@ -26,7 +30,7 @@ class RegisterView(generics.CreateAPIView):
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        serializer.is_valid(raise_exception=True) # this would always run all the methods in the serializer
         user = serializer.save()
 
         return Response({
@@ -43,7 +47,6 @@ class RegisterView(generics.CreateAPIView):
 class LoginView(generics.GenericAPIView):
     serializer_class = CustomUserLoginSerializer
     permission_classes = [AllowAny]
-    logging.basicConfig(level=logging.INFO)
     
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -76,18 +79,13 @@ class ForgotPasswordView(generics.GenericAPIView):
 
         # send password reset email
         try:
-            # send email
-            sendotp_via_email(email)
-            
+            user = CustomUser.objects.get(email=email)
+            sendotp_via_email(user.email)
             logging.info(f"Email sent successfully to {email}")  # For debugging
-            return Response({"message": f"otp sent."}) # testing
-        except Exception as e:
-            logging.error(f"Error sending email to {email}: {e}")
-            return Response({"error": "Error sending email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         except CustomUser.DoesNotExist:
-            logging.warning(f"Password reset requested for non-existent email: {email}")
-            pass
+            logging.warning(f"Password reset requested for a non existent user with non-existent email-> {email}")
+
         return Response({"message": "If the email exists, a password reset link has been sent."}, status=status.HTTP_200_OK)
 
 # password reset view
