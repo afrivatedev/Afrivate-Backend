@@ -23,6 +23,8 @@ class CustomUser(AbstractUser):
     REQUIRED_FIELDS = ['username', 'role']
 
     def tokens(self):
+        """somewhere in the jwt code, there is a table storing these code alongside the attached
+        custom claims"""
         refresh = RefreshToken.for_user(self)
 
         # attach custom claims

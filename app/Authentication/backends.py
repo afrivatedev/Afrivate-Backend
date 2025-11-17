@@ -5,6 +5,9 @@ import logging
 User = get_user_model()
 
 class CustomAuthenticationBackend(ModelBackend):
+    """this would still get used even though it is not imported directly, but it is listed
+    among the auth backends in the settings file."""
+
     def authenticate(self, request, email_or_username=None, password=None, **kwargs):
         logging.info(f"Attempting to authenticate user: {email_or_username}")
         if email_or_username is None or password is None:

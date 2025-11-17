@@ -1,9 +1,12 @@
 import pyotp
 from datetime import datetime , timedelta
 import logging
+
 from user_database.models import CustomUser, OtpToken
+
 from django.core.mail import EmailMessage
 from django.conf import settings
+
 from rest_framework.response import Response
 from rest_framework import status
 
