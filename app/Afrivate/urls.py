@@ -36,6 +36,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/auth/', include('Authentication.urls')),
     path('api-auth/', include('rest_framework.urls')),  # Django REST framework login/logout views
+    path("api/profile/me", include("profiles.urls")),
     path("", include('Authentication.urls')),  # Added to serve index view
 
     # API Documentation
