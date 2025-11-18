@@ -3,6 +3,8 @@ from django.contrib.auth.models import AbstractUser
 from django.utils import timezone
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from django.conf import settings
+
 
 # Create your models here.
 class CustomUser(AbstractUser):
@@ -13,7 +15,6 @@ class CustomUser(AbstractUser):
     email = models.EmailField(unique=True)
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, blank=False)
     bio = models.TextField(blank=True, null=True)
-    # profile_picture = models.ImageField(upload_to='profiles/', blank=True, null=True)
 
     # Field to store the OTP secret key
     otp_secret_key = models.CharField(max_length=32, null=True, blank=True)
@@ -41,7 +42,7 @@ class CustomUser(AbstractUser):
 
 
 class OtpToken(models.Model):
-    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     otp = models.CharField(max_length=6)
     is_used = models.BooleanField(default=False)
     expired = models.BooleanField(default=False)
