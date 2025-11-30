@@ -14,7 +14,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from datetime import timedelta
 
-load_dotenv() 
+load_dotenv() # makes it possible to read env variables
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -24,7 +24,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-+3l8cc7a0_y1%p2$7(s!3)okt9w7h7%ar0elov%0z@)vc10obh' 
+SECRET_KEY = os.environ.get("SECRET_KEY")     
 
 '''
 Generate a new secret key for production and keep it secret.
@@ -34,7 +34,7 @@ and set it as an environment variable.
 '''
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = bool(int(os.environ.get("DEBUG", 0)))
+DEBUG = bool(int(os.environ.get("DEBUG","0")))  # set to 0 in production
 
 ALLOWED_HOSTS = ["*"]  # to be changed in production
 
@@ -55,6 +55,8 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
     "corsheaders",
     'drf_yasg',
+
+    # S3 storage integration (only add when configured)
 
     #django apps
     'Authentication',
@@ -107,6 +109,36 @@ DATABASES = {
 }
 
 
+DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+
+AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
+AWS_STORAGE_BUCKET_NAME = os.environ.get("AWS_STORAGE_BUCKET_NAME")
+
+# S3 endpoint
+AWS_S3_ENDPOINT_URL = os.environ.get("AWS_S3_ENDPOINT_URL")   
+AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME")    
+
+# Optional, recommended
+AWS_S3_FILE_OVERWRITE = False
+AWS_DEFAULT_ACL = None
+
+# Only enable django-storages S3 backend when an S3 bucket name is provided.
+# This avoids raising ModuleNotFoundError in environments where 'django-storages'
+# is not installed (for example, local/dev without S3).
+if AWS_STORAGE_BUCKET_NAME:
+    try:
+        # Add 'storages' to INSTALLED_APPS only when configured
+        INSTALLED_APPS.append('storages')
+        DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+    except Exception:
+        # If the package isn't installed, fall back to default file storage.
+        DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
+else:
+    # No S3 configured — use local filesystem storage (Django default)
+    DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
+
+
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
 
@@ -141,7 +173,10 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = 'static/'
+
+# MEDIA_URL = '/media/'
+
+# MEDIA_ROOT = "/vol/web/media"
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

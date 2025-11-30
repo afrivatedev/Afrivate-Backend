@@ -1,11 +1,21 @@
+import os
+import uuid
 from django.conf import settings
 from django.db import models
 from django.db.models import CheckConstraint, Q
 
 
+def recipe_image_file_path(instance, filename):
+    """Generate file path for the new profile pic while still maintaining the original file extension"""
+    ext = os.path.splitext(filename)[1]  # Get the file extension
+    filename = f'{uuid.uuid4}{ext}' # create a unique filename using uuid
+
+    return os.path.join('profile',f'profile_pics',f'user_{instance.user.user_id}', filename)
+
+
 class BaseProfile(models.Model):
     """Base profile model"""
-    profile_pic = models.ImageField(upload_to="profile_pic/", null=True, blank=True)
+    profile_pic = models.ImageField(upload_to=recipe_image_file_path, null=True, blank=True)
     address = models.TextField(max_length=256,null=False, blank=False)
     city = models.CharField(max_length=50, null=False, blank=False)
     state = models.CharField(max_length=50,null=False, blank=False)
@@ -18,12 +28,12 @@ class BaseProfile(models.Model):
 
 class EnablerProfile(BaseProfile):
     """This is the user profile model for the Enabler"""
-    name = models.CharField(max_length=100, null=True, blank=True)
+    name = models.CharField(max_length=100, null=False, blank=False)
 
 class PathfinderProfile(BaseProfile):
     """This is the user profile model for the Pathfinder"""
-    firstname = models.CharField(max_length=50,null=True, blank=True)
-    lastname = models.CharField(max_length=50,null=True, blank=True)
+    firstname = models.CharField(max_length=50,null=False, blank=False)
+    lastname = models.CharField(max_length=50,null=False, blank=False)
     othername = models.CharField(max_length=50,null=True, blank=True)
     username = models.CharField(max_length=50,null=True, blank=True)
 
@@ -35,7 +45,6 @@ class SocialLink(models.Model):
     )
     platform_name = models.CharField(max_length=50, blank=False,null=False)
     platform_url = models.URLField(max_length=150,blank=False, null=False)
-    role = models.CharField(max_length=50,choices=ROLE_CHOICES, blank=False, null=False)
     enabler_profile = models.ForeignKey("EnablerProfile", on_delete=models.CASCADE,blank=True, null=True)
     pathfinder_profile = models.ForeignKey("PathfinderProfile", on_delete=models.CASCADE, blank=True, null=True)
 
@@ -44,7 +53,7 @@ class SocialLink(models.Model):
         constraints = [
             CheckConstraint(
                 check=(Q(enabler_profile__isnull=True) | Q(pathfinder_profile__isnull=True)),
-                name="profile_exclusivity"
+                name="sociallink_profile_exclusivity"
             )
         ]
 
@@ -57,7 +66,6 @@ class Credential(models.Model):
     document_name = models.CharField(max_length=100, blank=False, null=False)
     document = models.FileField(upload_to="profile/credentials/", blank=False, null=False)
     is_verified = models.BooleanField(default=False)
-    role = models.CharField(max_length=50,choices=ROLE_CHOICES, blank=False, null=False)
     enabler_profile = models.ForeignKey("EnablerProfile", on_delete=models.CASCADE,blank=True, null=True)
     pathfinder_profile = models.ForeignKey("PathfinderProfile", on_delete=models.CASCADE, blank=True, null=True)
 
@@ -66,6 +74,6 @@ class Credential(models.Model):
         constraints = [
             CheckConstraint(
                 check=(Q(enabler_profile__isnull=True) | Q(pathfinder_profile__isnull=True)),
-                name="profile_exclusivity"
+                name="credential_profile_exclusivity"
             )
         ]
