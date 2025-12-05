@@ -13,10 +13,12 @@ class CustomUser(AbstractUser):
     email = models.EmailField(unique=True)
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, blank=False)
     bio = models.TextField(blank=True, null=True)
-    # profile_picture = models.ImageField(upload_to='profiles/', blank=True, null=True)
 
     # Field to store the OTP secret key
-    otp_secret_key = models.CharField(max_length=32, null=True, blank=True)
+    # otp_secret_key = models.CharField(max_length=32, null=True, blank=True)
+    reset_password_otp = models.IntegerField(null=True, blank=True)
+    reset_password_otp_expiry = models.DateTimeField(null=True, blank=True)
+    reset_password_otp_used = models.BooleanField(default=False)
 
     # USERNAME_FIELD = 'email_or_username' # i cant do this in abstract user
     USERNAME_FIELD = 'email'
@@ -38,7 +40,6 @@ class CustomUser(AbstractUser):
 
     def __str__(self):
         return self.username
-
 
 class OtpToken(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
@@ -65,4 +66,4 @@ class OtpToken(models.Model):
         self.save()
 
     def __str__(self):
-        return f"OTP for {self.user.username}: {self.otp}"
+        return f"OTP for {self.user.username}: {self.otp}" 

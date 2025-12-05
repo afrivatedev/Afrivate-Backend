@@ -16,4 +16,5 @@ urlpatterns = [
     path('logout/', LogoutView.as_view(), name='logout'),
     path('verify-otp/', OtpVerifyView.as_view(), name='verify-otp'),  # new path for verifying OTP
     path('change-password/', ChangePasswordView.as_view(), name='change-password'),
+    # path('waitlist/', WaitlistEmailView.as_view(), name='waitlist-email'),
 ]
