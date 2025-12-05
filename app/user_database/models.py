@@ -66,4 +66,12 @@ class OtpToken(models.Model):
         self.save()
 
     def __str__(self):
-        return f"OTP for {self.user.username}: {self.otp}" 
+        return f"OTP for {self.user.username}: {self.otp}"
+    
+class waitlistEmail(models.Model):
+    name = models.CharField(max_length=255, null=True, blank=True)
+    email = models.EmailField(unique=True, null=False, blank=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.email

@@ -169,3 +169,8 @@ class VerifyOTPSerializer(serializers.Serializer):
         attrs['user'] = user
 
         return attrs
+    
+class waitlistEmailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = waitlistEmail
+        fields = ['email', 'name']
