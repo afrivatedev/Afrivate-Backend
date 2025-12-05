@@ -21,7 +21,7 @@ from .utils import sendotp_via_email
 
 # Create your views here.
 def index(request):
-    return HttpResponse("Welcome")
+    return HttpResponse("Welcome to Afrivate Authentication Service")
 
 # user registration view
 class RegisterView(generics.CreateAPIView):
