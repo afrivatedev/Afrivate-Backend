@@ -24,6 +24,8 @@ from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 from rest_framework import permissions
 
+import Authentication.views
+
 schema_view = get_schema_view(
     openapi.Info(
         title="Afrivate API",
@@ -39,7 +41,7 @@ urlpatterns = [
     path('api/auth/', include('Authentication.urls')),
     path('api-auth/', include('rest_framework.urls')),  # Django REST framework login/logout views
     path("api/profile/", include("profiles.urls")),
-    path("", include('Authentication.urls')),  # Added to serve index view
+    path("", Authentication.views.index,),  # Added to serve index view
 
     # API Documentation
     path('api/v1/docs/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
