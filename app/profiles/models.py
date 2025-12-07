@@ -1,3 +1,7 @@
+"""
+Profile model for user profiles, including Enabler and Pathfinder extra fields, social links, and credentials.
+"""
+
 import os
 import uuid
 from django.conf import settings
