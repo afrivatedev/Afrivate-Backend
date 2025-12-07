@@ -45,12 +45,6 @@ class BaseProfileSerializer(serializers.ModelSerializer):
                 platform_url=links.get("platform_url"),
             )
 
-    def validate(self, attrs):
-        user = self.context["request"].user
-        if self.instance is None and hasattr(user, "profile"):
-            raise serializers.ValidationError("Profile already exists for this user.")
-        return attrs
-
     def update(self, instance, validated_data):
         base_details_data = validated_data.pop("profile", None)
         social_links_data = validated_data.pop("social_links", None)
@@ -83,6 +77,14 @@ class EnablerProfileSerializer(BaseProfileSerializer):
         exclude = ("profile",)
         read_only_fields = ("id",)
 
+    def validate(self, attrs):
+        user = self.context["request"].user
+        if self.instance is None and hasattr(user, "profile"):
+            raise serializers.ValidationError("Profile already exists for this user.")
+        if user.role != "enabler":
+            raise serializers.ValidationError("Only users with Enabler role can create Enabler profiles.")
+        return attrs
+
     def create(self, validated_data):
         user = self.context["request"].user
         base_details_data = validated_data.pop("profile", None)  # 'profile' key comes from source on base_details
@@ -102,6 +104,15 @@ class PathfinderProfileSerializer(BaseProfileSerializer):
         model = PathfinderProfileExtra
         exclude = ("profile",)
         read_only_fields = ("id",)
+
+    def validate(self, attrs):
+        user = self.context["request"].user
+        if self.instance is None and hasattr(user, "profile"):
+            raise serializers.ValidationError("Profile already exists for this user.")
+
+        if user.role != "pathfinder":
+            raise serializers.ValidationError("Only users with Pathfinder role can create Pathfinder profiles.")
+        return attrs
 
     def create(self, validated_data):
         user = self.context["request"].user

@@ -1,5 +1,5 @@
 """
-The profile app handles things like the pathfinder and Enabler view as well as
+The profile app handles things like the pathfinder and Enabler profile view as well as
 government issued identifications for both pathfinder and Enabler.
 """
 from profiles.models import EnablerProfileExtra, PathfinderProfileExtra, Profile

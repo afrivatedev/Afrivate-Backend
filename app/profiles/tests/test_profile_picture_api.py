@@ -1,3 +1,9 @@
+"""
+Tests for the Profile Picture API endpoint.
+please note that it is sufficient to test only the profile picture endpoint hereusing the
+enabler profile since both enabler and pathfinder profiles share the same profile model.
+Hence, a test for one suffices to ensure the profile picture functionality works for both.
+"""
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
@@ -10,7 +16,7 @@ from PIL import Image
 PROFILE_PIC_URL = reverse("profiles:profile-pic")
 
 
-def create_user(username="picuser", email="picuser@example.com", password="Testpass123!", role="pathfinder"):
+def create_user(username="picuser", email="picuser@example.com", password="Testpass123!", role="enabler"):
     return get_user_model().objects.create_user(email=email, username=username, password=password, role=role)
 
 
