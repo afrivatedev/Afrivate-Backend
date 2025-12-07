@@ -19,6 +19,7 @@ services:
       - DB_USER=${DB_USER}
       - DB_PASS=${DB_PASSWORD}
       - DEBUG=${DEBUG}
+      - SECRET_KEY=${SECRET_KEY}
     depends_on:
       - db
 
