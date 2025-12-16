@@ -1,6 +1,6 @@
 from rest_framework import serializers, status
 # from Authentication.backends import User
-from .models import CustomUser, OtpToken
+from .models import CustomUser, OtpToken, waitlistEmail 
 from django.contrib.auth import authenticate
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.contrib.auth.password_validation import validate_password
@@ -51,10 +51,11 @@ class CustomUserLoginSerializer(serializers.Serializer):
         password = data.get('password')
 
         # try with email first
-        user = authenticate(email=username_or_email, password=password)  # can use both username/email to login
+        user = authenticate(email_or_username=username_or_email, password=password)  # can use both username/email to login
         if not user:
             # try with username
-            user = authenticate(username=username_or_email, password=password)
+            user = authenticate(email_or_username=username_or_email, password=password)
+
 
         if not user:
             raise serializers.ValidationError(
@@ -119,7 +120,6 @@ class ChangePasswordSerializer(serializers.Serializer):
 class ProfileSerializer(serializers.ModelSerializer):
     pass
 
-
 class OTPRequestSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
@@ -169,3 +169,8 @@ class VerifyOTPSerializer(serializers.Serializer):
         attrs['user'] = user
 
         return attrs
+    
+class waitlistEmailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = waitlistEmail
+        fields = ['email', 'name']
