@@ -2,7 +2,7 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.utils import timezone
 from rest_framework_simplejwt.tokens import RefreshToken
-from django.core.validators import EmailValidator
+
 
 # Create your models here.
 class CustomUser(AbstractUser):
@@ -10,12 +10,9 @@ class CustomUser(AbstractUser):
         ('enabler', 'Enabler'),
         ('pathfinder', 'Pathfinder'),
     )
-    email = models.EmailField(unique=True, validators=[EmailValidator()], null=False, blank=False, db_index=True)
+    email = models.EmailField(unique=True)
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, blank=False)
     bio = models.TextField(blank=True, null=True)
-    
-    # verifying email
-    is_email_verified = models.BooleanField(default=False)
 
     # Field to store the OTP secret key
     # otp_secret_key = models.CharField(max_length=32, null=True, blank=True)
@@ -71,19 +68,10 @@ class OtpToken(models.Model):
     def __str__(self):
         return f"OTP for {self.user.username}: {self.otp}"
     
-class WaitlistEmail(models.Model):
+class waitlistEmail(models.Model):
     name = models.CharField(max_length=255, null=True, blank=True)
-    referral_source = models.CharField(max_length=100, null=True, blank=True)
-    email = models.EmailField(unique=True, null=False, blank=False, db_index=True, validators=[EmailValidator()])
+    email = models.EmailField(unique=True, null=False, blank=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
-    # is_notified = models.BooleanField(default=False)
-
     def __str__(self):
-        return f"{self.email} - {self.created_at}"
-    
-    class Meta:
-        ordering = ['-created_at']
-        db_table = 'waitlist_emails'
-        verbose_name = 'Waitlist Email'
-        verbose_name_plural = 'Waitlist Emails'
+        return self.email

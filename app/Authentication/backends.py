@@ -21,7 +21,7 @@ class CustomAuthenticationBackend(ModelBackend):
             user = User.objects.get(
                 Q(email=email_or_username) | Q(username=email_or_username)
             )
-            print(f"hey {user}")
+            print("hey" + str(user))
             
             # Check if the password is correct and if the user can authenticate
             if user.check_password(password) and self.user_can_authenticate(user):

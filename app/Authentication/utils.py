@@ -4,15 +4,13 @@ import logging
 
 from user_database.models import CustomUser, OtpToken
 
-# from django.core.mail import EmailMessage
-from django.core.mail import send_mail
+from django.core.mail import EmailMessage
 from django.conf import settings
 
 from rest_framework.response import Response
 from rest_framework import status
 
 import random
-import textwrap
 
 def send_otp(email):
     """Generate and send OTP to the user's email"""
@@ -38,30 +36,26 @@ def sendotp_via_email(email):
             "success": False,
             "message": "User does not exist"
         }, status=status.HTTP_404_NOT_FOUND)
-      
+    
     user = CustomUser.objects.get(email=email) # calling this in the send_otp function
     subject = 'Password Reset Request'
-    message = textwrap.dedent(f"""
+    message = f"""
         Dear {user.username},
+        You requested a password reset. 
 
-        You requested a password reset.
-            
             Your OTP is: {otp}
 
         If you didn't request this, please ignore this email.
-        
         This otp will expire in 10 minutes. 
-        """)
-    
-    try:            # EmailMessage
-        send_mail(subject=subject,
-                # body=message,
-                message=message,
-                from_email=settings.DEFAULT_FROM_EMAIL,     
-                # to=[email]
-                recipient_list=[email],
-                fail_silently=False,  # Send the email, silencing any errors that occur
-    )   
+        """
+    try:
+        email_message = EmailMessage(subject=subject,
+                                      body=message,
+                                        from_email=settings.DEFAULT_FROM_EMAIL, 
+                                        to=[email]
+                                        )
+        # Send the email, silencing any errors that occur
+        email_message.send(fail_silently=False)
         return Response({
                     "success": True,
                     "message": "Email sent successfully"
