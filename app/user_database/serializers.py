@@ -1,6 +1,6 @@
 from rest_framework import serializers, status
 # from Authentication.backends import User
-from .models import CustomUser, OtpToken, WaitlistEmail 
+from .models import CustomUser, OtpToken, waitlistEmail 
 from django.contrib.auth import authenticate
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.contrib.auth.password_validation import validate_password
@@ -40,6 +40,7 @@ class CustomUserRegistrationSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(e.messages)
         return value
 
+
 class CustomUserLoginSerializer(serializers.Serializer):
     username_or_email = serializers.CharField()
     password = serializers.CharField(
@@ -64,11 +65,14 @@ class CustomUserLoginSerializer(serializers.Serializer):
         data['user'] = user
         return data
 
+
 class LogoutSerializer(serializers.Serializer):
     pass  # No fields needed for logout
 
+
 class ForgotPasswordSerializer(serializers.Serializer):
     email = serializers.EmailField()
+
 
 class ResetPasswordSerializer(serializers.Serializer):
     uid = serializers.CharField()  # what is uid here?
@@ -86,6 +90,7 @@ class ResetPasswordSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 {"password": "Passwords do not match"}, code=status.HTTP_400_BAD_REQUEST)
         return data
+
 
 class ChangePasswordSerializer(serializers.Serializer):
     old_password = serializers.CharField(
@@ -111,6 +116,7 @@ class ChangePasswordSerializer(serializers.Serializer):
                 {"confirm_password": "Passwords do not match"}, code=status.HTTP_400_BAD_REQUEST)
         return data
 
+
 class ProfileSerializer(serializers.ModelSerializer):
     pass
 
@@ -127,6 +133,7 @@ class OTPRequestSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 {"error": "No user is associated with this email"}, code=status.HTTP_400_BAD_REQUEST)
         return email
+
 
 class VerifyOTPSerializer(serializers.Serializer):
     otp = serializers.CharField(max_length=6)
@@ -165,33 +172,5 @@ class VerifyOTPSerializer(serializers.Serializer):
     
 class waitlistEmailSerializer(serializers.ModelSerializer):
     class Meta:
-        model = WaitlistEmail
+        model = waitlistEmail
         fields = ['email', 'name']
-        extra_kwargs = {
-            'name': {'required': False, 'allow_blank': True},
-            'email': {'required': True}
-        }
-
-        def validate_email(self, value):
-            # Check if email already exists in the waitlist
-            if WaitlistEmail.objects.filter(email=value).exists():
-                raise serializers.ValidationError("This email is already in the waitlist.")
-            return value
-        
-        def create(self, validated_data):
-            email = validated_data.get('email')
-
-            waitlist_email = WaitlistEmail.objects.filter(email=email).first()
-            if waitlist_email:
-                raise serializers.ValidationError({
-                    "email": "This email is already in the waitlist."
-                })
-            return WaitlistEmail.objects.create(**validated_data)
-    
-# waitlisrt stats serializer
-'''
-    total_signups
-    signups_today 
-    signups_this_week 
-    signups_this_month
-'''

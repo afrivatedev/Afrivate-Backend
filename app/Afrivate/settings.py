@@ -152,7 +152,7 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 # Email configuration
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'  # Use your email provider's SMTP server
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
@@ -160,7 +160,7 @@ EMAIL_HOST_USER = os.getenv("GMAIL_ACCT")  # Change later to Afrivates official 
 EMAIL_HOST_PASSWORD = os.getenv("GMAIL_PWD")  # Your email password or app password
 DEFAULT_FROM_EMAIL = 'Afrivate Support <noreply@afrivate.com>'
 
-# EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend' # to delete soon 
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend' # to delete soon 
 # ACCOUNT_EMAIL_REQUIRED = True
 # ACCOUNT_USERNAME_REQUIRED = False
 # ACCOUNT_AUTHENTICATION_METHOD = 'email'
@@ -183,7 +183,6 @@ SIMPLE_JWT = {
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "https://joshuaimmortal.github.io",
-    # "add render and domain links here later"
 ]
 
 CORS_ALLOW_ALL_ORIGINS = False
