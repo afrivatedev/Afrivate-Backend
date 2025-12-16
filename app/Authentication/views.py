@@ -21,7 +21,7 @@ from .utils import sendotp_via_email
 
 # Create your views here.
 def index(request):
-    return HttpResponse("Welcome")
+    return HttpResponse("Welcome to Afrivate Authentication Service")
 
 # user registration view
 class RegisterView(generics.CreateAPIView):
@@ -196,3 +196,14 @@ class OtpVerifyView(generics.GenericAPIView):
             # "refresh": str(tokens['refresh_token']),
             "access": str(tokens['access_token'])
         }, status=status.HTTP_200_OK)
+    
+# waitlist email view
+class WaitlistEmailView(generics.GenericAPIView):
+    serializer_class = waitlistEmailSerializer
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({"message": "Email added to waitlist successfully"}, status=status.HTTP_201_CREATED)
