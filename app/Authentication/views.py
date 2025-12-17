@@ -204,6 +204,66 @@ class WaitlistEmailView(generics.GenericAPIView):
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response({"message": "Email added to waitlist successfully"}, status=status.HTTP_201_CREATED)
+        
+        if serializer.is_valid():
+            try:
+                user = serializer.save()
+                
+                # SEND CONFIRMATION EMAIL
+
+                return Response({
+                    "success": True,
+                    'message': "Check your email for confirmation",
+                    'email': user.email
+                    },
+                    status=status.HTTP_201_CREATED)
+                
+            except Exception as e:
+                return Response({
+                   'success': False,
+                   'message': ' An error occured. Please try again.' 
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+        return Response({
+            "message": "Email added to waitlist successfully",
+            'errors': serializer.errors
+            },status=status.HTTP_201_CREATED)
+    
+'''
+class VerifyEmail(generics.GenericAPIView):
+
+    def post(self, request, *args, **kwargs):
+        
+        # get user email
+    
+        # create email payload
+
+        # get redirect link
+
+        # create a token generator
+
+        # move this to utils
+        user = CustomUser.objects.get(email=email) 
+                
+        subject = "Verify Email"
+        message = f"""
+            Dear {user.username},
+            Your email has been successfully verified 
+                a redirect link to login page. {link}
+
+            If you didn't request this, please ignore this email.
+            This otp will expire in 10 minutes. 
+            """
+        try:
+            email_message = EmailMessage(subject=subject,
+                                        body=message,
+                                            from_email=settings.DEFAULT_FROM_EMAIL, 
+                                            to=[email]
+                                            )
+            # Send the email, silencing any errors that occur
+            email_message.send(fail_silently=False)
+            
+'''
+
+# waitlist stats view
