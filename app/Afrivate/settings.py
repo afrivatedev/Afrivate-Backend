@@ -194,7 +194,7 @@ SIMPLE_JWT = {
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "https://joshuaimmortal.github.io",
-    'afrivate-backend.onrender.com'
+    'https://afrivate-backend.onrender.com'
 ]
 
 CORS_ALLOW_ALL_ORIGINS = False
