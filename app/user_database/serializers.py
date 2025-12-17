@@ -1,6 +1,6 @@
 from rest_framework import serializers, status
 # from Authentication.backends import User
-from .models import CustomUser, OtpToken, waitlistEmail 
+from .models import CustomUser, OtpToken, WaitlistEmail
 from django.contrib.auth import authenticate
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.contrib.auth.password_validation import validate_password
@@ -172,5 +172,33 @@ class VerifyOTPSerializer(serializers.Serializer):
     
 class waitlistEmailSerializer(serializers.ModelSerializer):
     class Meta:
-        model = waitlistEmail
+        model = WaitlistEmail
         fields = ['email', 'name']
+        extra_kwargs = {
+            'name': {'required': False, 'allow_blank': True},
+            'email': {'required': True}
+        }
+
+        def validate_email(self, value):
+            # Check if email already exists in the waitlist
+            if WaitlistEmail.objects.filter(email=value).exists():
+                raise serializers.ValidationError("This email is already in the waitlist.")
+            return value
+        
+        def create(self, validated_data):
+            email = validated_data.get('email')
+
+            waitlist_email = WaitlistEmail.objects.filter(email=email).first()
+            if waitlist_email:
+                raise serializers.ValidationError({
+                    "email": "This email is already in the waitlist."
+                })
+            return WaitlistEmail.objects.create(**validated_data)
+    
+# waitlisrt stats serializer
+'''
+    total_signups
+    signups_today 
+    signups_this_week 
+    signups_this_month
+'''
