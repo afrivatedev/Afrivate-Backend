@@ -195,6 +195,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "https://joshuaimmortal.github.io",
     'https://afrivate-backend.onrender.com'
+    'https://afrivate-tech.github.io/Afrivate/'
 ]
 
 CORS_ALLOW_ALL_ORIGINS = False
