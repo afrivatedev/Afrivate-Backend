@@ -6,8 +6,6 @@ import os
 import uuid
 from django.conf import settings
 from django.db import models
-from django.db.models import CheckConstraint, Q
-
 
 def recipe_image_file_path(instance, filename):
     """Generate file path for the new profile pic while still maintaining the original file extension"""

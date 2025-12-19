@@ -11,10 +11,11 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 import os 
 from pathlib import Path
-# from dotenv import load_dotenv
+from dotenv import load_dotenv
 from datetime import timedelta
 
-# load_dotenv() this is not needed as docker can itself load env variables
+
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -109,11 +110,23 @@ DATABASES = {
      },
 }
 
+STORAGES = {
+    "default": {
+        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+        "OPTIONS": {
+            # Add any specific options here if needed
+        },
+    },
+    "staticfiles": {
+        "BACKEND": 'django.contrib.staticfiles.storage.StaticFilesStorage',
+        # Or  if keeping static locally
+    },
+}
 
-DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
 
 MAX_PROFILE_PIC_MB = 5
 PROFILE_PIC_ALLOWED_FORMATS = {"JPEG", "JPG", "PNG", "WEBP"}
+
 
 AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")
 AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
@@ -121,7 +134,9 @@ AWS_STORAGE_BUCKET_NAME = os.environ.get("AWS_STORAGE_BUCKET_NAME")
 
 # S3 endpoint
 AWS_S3_ENDPOINT_URL = os.environ.get("AWS_S3_ENDPOINT_URL")   
-AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME")    
+AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME")
+
+print(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_STORAGE_BUCKET_NAME)
 
 # Optional, recommended
 AWS_S3_FILE_OVERWRITE = False
