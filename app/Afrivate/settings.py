@@ -37,7 +37,7 @@ and set it as an environment variable.
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = bool(int(os.environ.get("DEBUG","0")))  # set to 0 in production
 
-ALLOWED_HOSTS = ["*"]  # to be changed in production
+ALLOWED_HOSTS = ['afrivate-backend.onrender.com', "localhost", "127.0.0.1"] 
 
 
 # Application definition
@@ -68,6 +68,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     "corsheaders.middleware.CorsMiddleware",
     'django.middleware.common.CommonMiddleware',
@@ -181,6 +182,16 @@ USE_TZ = True
 
 STATIC_URL = "/static/"
 
+# This is where collectstatic will put all files for production
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+# This tells WhiteNoise to compress and cache your files (improves performance)
+STORAGES = {
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
@@ -236,6 +247,7 @@ SIMPLE_JWT = {
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "https://joshuaimmortal.github.io",
+    'https://afrivate-backend.onrender.com'
 ]
 
 CORS_ALLOW_ALL_ORIGINS = False

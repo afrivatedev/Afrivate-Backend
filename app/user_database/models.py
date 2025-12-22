@@ -5,6 +5,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from django.conf import settings
 
+from django.core.validators import EmailValidator
 
 # Create your models here.
 class CustomUser(AbstractUser):
@@ -12,12 +13,18 @@ class CustomUser(AbstractUser):
         ('enabler', 'Enabler'),
         ('pathfinder', 'Pathfinder'),
     )
-    email = models.EmailField(unique=True)
+    email = models.EmailField(unique=True, validators=[EmailValidator()], null=False, blank=False, db_index=True)
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, blank=False)
     bio = models.TextField(blank=True, null=True)
+    
+    # verifying email
+    is_email_verified = models.BooleanField(default=False)
 
     # Field to store the OTP secret key
-    otp_secret_key = models.CharField(max_length=32, null=True, blank=True)
+    # otp_secret_key = models.CharField(max_length=32, null=True, blank=True)
+    reset_password_otp = models.IntegerField(null=True, blank=True)
+    reset_password_otp_expiry = models.DateTimeField(null=True, blank=True)
+    reset_password_otp_used = models.BooleanField(default=False)
 
     # USERNAME_FIELD = 'email_or_username' # i cant do this in abstract user
     USERNAME_FIELD = 'email'
@@ -39,7 +46,6 @@ class CustomUser(AbstractUser):
 
     def __str__(self):
         return self.username
-
 
 class OtpToken(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
@@ -67,3 +73,20 @@ class OtpToken(models.Model):
 
     def __str__(self):
         return f"OTP for {self.user.username}: {self.otp}"
+    
+class WaitlistEmail(models.Model):
+    name = models.CharField(max_length=255, null=True, blank=True)
+    referral_source = models.CharField(max_length=100, null=True, blank=True)
+    email = models.EmailField(unique=True, null=False, blank=False, db_index=True, validators=[EmailValidator()])
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    # is_notified = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.email} - {self.created_at}"
+    
+    class Meta:
+        ordering = ['-created_at']
+        db_table = 'waitlist_emails'
+        verbose_name = 'Waitlist Email'
+        verbose_name_plural = 'Waitlist Emails'

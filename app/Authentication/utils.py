@@ -1,5 +1,5 @@
-import pyotp
-from datetime import datetime , timedelta
+from datetime import timedelta
+from django.utils import timezone
 import logging
 
 from user_database.models import CustomUser, OtpToken
@@ -10,54 +10,55 @@ from django.conf import settings
 from rest_framework.response import Response
 from rest_framework import status
 
-def generateotp(email):
-    """Generate a 6-digit OTP"""
-    user = CustomUser.objects.get(email=email)
+import random
 
-    if not user.otp_secret_key:
-        # Generate a new secret key for the user if not already present
-        secret_key = pyotp.random_base32()
-        user.otp_secret_key = secret_key
+def send_otp(email):
+    """Generate and send OTP to the user's email"""
+    otp = random.randint(100000, 999999)
+    try: 
+        user = CustomUser.objects.get(email=email)
+        user.reset_password_otp = otp
+        user.reset_password_otp_expiry = timezone.now() + timedelta(minutes=10)  # OTP valid for 10 minutes
+        user.reset_password_otp_used = False
         user.save()
+        return otp
+    except CustomUser.DoesNotExist:
+        logging.error(f"User with email {email} does not exist.")
+        return None
 
-    totp = pyotp.TOTP(user.otp_secret_key, interval=300) # OTP valid for 5 minutes
-    otp = totp.now()
-
-    try:
-        existing_otp = OtpToken.objects.get(user=user)
-        if existing_otp.is_valid() and not existing_otp.is_used:
-            return existing_otp.otp  # Return existing valid OTP
-        existing_otp.delete()  # Remove expired or used OTP
-        
-    except OtpToken.DoesNotExist:
-        logging.info("No existing OTP found, generating a new one.")
-        pass
-    
-    # Create a new OTP record
-    OtpToken.objects.create(user=user, otp=otp,)
-    logging.info(f"Generated new OTP for user {email}")
-    return otp
 
 def sendotp_via_email(email):
     """Send OTP to the specified email address""" 
-    try:
-        otp = generateotp(email)
-        user = CustomUser.objects.get(email=email)
-    
-        subject = 'Password Reset Request'
-        message = f"""
-            Hi {user.username},
-            You requested a password reset. Click the link below to reset your password:
-                Your OTP is: {otp}
-            If you didn't request this, please ignore this email.
-            This link will expire in 5 min. [draft]
-            """
-    
-        payload = EmailMessage(subject=subject, body=message, from_email=settings.DEFAULT_FROM_EMAIL, to=[email])
-        # Send the email, silencing any errors that occur
-        payload.send(fail_silently=False)
+    # otp = generateotp(email)  #pyotp based otp
+    otp = send_otp(email)
+    if otp is None:
         return Response({
-            "data": "Email sent successfully"
+            "success": False,
+            "message": "User does not exist"
+        }, status=status.HTTP_404_NOT_FOUND)
+    
+    user = CustomUser.objects.get(email=email) # calling this in the send_otp function
+    subject = 'Password Reset Request'
+    message = f"""
+        Dear {user.username},
+        You requested a password reset. 
+
+            Your OTP is: {otp}
+
+        If you didn't request this, please ignore this email.
+        This otp will expire in 10 minutes. 
+        """
+    try:
+        email_message = EmailMessage(subject=subject,
+                                      body=message,
+                                        from_email=settings.DEFAULT_FROM_EMAIL, 
+                                        to=[email]
+                                        )
+        # Send the email, silencing any errors that occur
+        email_message.send(fail_silently=False)
+        return Response({
+                    "success": True,
+                    "message": "Email sent successfully"
                     }, status=status.HTTP_200_OK)
     
     except CustomUser.DoesNotExist:
@@ -73,4 +74,3 @@ def sendotp_via_email(email):
             "success": False,
             "message": "Failed to send OTP"
         }, status=status.HTTP_400_BAD_REQUEST)
-
