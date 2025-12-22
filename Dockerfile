@@ -37,7 +37,10 @@ RUN python -m venv /py && \
     adduser \
      --disabled-password\
      --no-create-home\
-      django-user
+      django-user &&\
+    mkdir -p /vol/web/media && \
+    mkdir -p /vol/web/static && \
+    chown -R django-user:django-user /vol/web/media /vol/web/static
 #this block helps us define our path to our user defined variables, executables
 ENV PATH="/py/bin:$PATH"
 

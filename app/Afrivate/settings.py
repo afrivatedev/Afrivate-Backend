@@ -14,7 +14,8 @@ from pathlib import Path
 from dotenv import load_dotenv
 from datetime import timedelta
 
-load_dotenv() 
+
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -24,7 +25,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-+3l8cc7a0_y1%p2$7(s!3)okt9w7h7%ar0elov%0z@)vc10obh' 
+SECRET_KEY = os.environ.get('SECRET_KEY')
 
 '''
 Generate a new secret key for production and keep it secret.
@@ -34,7 +35,7 @@ and set it as an environment variable.
 '''
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = bool(int(os.environ.get("DEBUG", 0)))
+DEBUG = bool(int(os.environ.get("DEBUG","0")))  # set to 0 in production
 
 ALLOWED_HOSTS = ['afrivate-backend.onrender.com', "localhost", "127.0.0.1"] 
 
@@ -49,13 +50,20 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
+    #dependencies
     'rest_framework', 
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
     "corsheaders",
     'drf_yasg',
+
+    # for s3 strorage
+    'storages',
+
+    #django apps
     'Authentication',
     'user_database',
+    'profiles',
 ]
 
 MIDDLEWARE = [
@@ -103,6 +111,40 @@ DATABASES = {
      },
 }
 
+STORAGES = {
+    "default": {
+        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+        "OPTIONS": {
+            # Add any specific options here if needed
+        },
+    },
+    "staticfiles": {
+        "BACKEND": 'django.contrib.staticfiles.storage.StaticFilesStorage',
+        # Or  if keeping static locally
+    },
+}
+
+
+MAX_PROFILE_PIC_MB = 5
+PROFILE_PIC_ALLOWED_FORMATS = {"JPEG", "JPG", "PNG", "WEBP"}
+
+
+AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
+AWS_STORAGE_BUCKET_NAME = os.environ.get("AWS_STORAGE_BUCKET_NAME")
+
+# S3 endpoint
+AWS_S3_ENDPOINT_URL = os.environ.get("AWS_S3_ENDPOINT_URL")   
+AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME")
+
+print(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_STORAGE_BUCKET_NAME)
+
+# Optional, recommended
+AWS_S3_FILE_OVERWRITE = False
+AWS_DEFAULT_ACL = None
+
+
+
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
@@ -138,7 +180,7 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = "/static/"
 
 # This is where collectstatic will put all files for production
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
@@ -180,6 +222,17 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     )
+}
+
+SWAGGER_SETTINGS = {
+    "SECURITY_DEFINITIONS": {
+        "Bearer": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header",
+            "description": "JWT Authorization header using Bearer scheme. Example: Bearer <token>",
+        }
+    }
 }
 
 SIMPLE_JWT = {
