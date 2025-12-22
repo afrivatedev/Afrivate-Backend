@@ -2,6 +2,9 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.utils import timezone
 from rest_framework_simplejwt.tokens import RefreshToken
+
+from django.conf import settings
+
 from django.core.validators import EmailValidator
 
 # Create your models here.
@@ -45,7 +48,7 @@ class CustomUser(AbstractUser):
         return self.username
 
 class OtpToken(models.Model):
-    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     otp = models.CharField(max_length=6)
     is_used = models.BooleanField(default=False)
     expired = models.BooleanField(default=False)
