@@ -37,7 +37,7 @@ and set it as an environment variable.
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = bool(int(os.environ.get("DEBUG","0")))  # set to 0 in production
 
-ALLOWED_HOSTS = ['afrivate-backend.onrender.com', "localhost", "127.0.0.1"] 
+ALLOWED_HOSTS = ['afrivate-backend.onrender.com', "localhost", "127.0.0.1","https://afrivate-tech.github.io" ] 
 
 
 # Application definition
@@ -247,7 +247,8 @@ SIMPLE_JWT = {
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "https://joshuaimmortal.github.io",
-    'https://afrivate-backend.onrender.com'
+    'https://afrivate-backend.onrender.com',
+    'https://afrivate-tech.github.io'
 ]
 
 CORS_ALLOW_ALL_ORIGINS = False
