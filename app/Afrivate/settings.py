@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
     "corsheaders",
     'drf_yasg',
+    'sendgrid_backend',
 
     # for s3 strorage
     'storages',
@@ -205,18 +206,12 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 # Email configuration
-# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'  # Use your email provider's SMTP server
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = os.getenv("GMAIL_ACCT")  # Change later to Afrivates official email
-EMAIL_HOST_PASSWORD = os.getenv("GMAIL_PWD")  # Your email password or app password
-DEFAULT_FROM_EMAIL = 'Afrivate Support <noreply@afrivate.com>'
+EMAIL_BACKEND = os.getenv("DJANGO_EMAIL_BACKEND") # For Production purposes
+SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL")
 
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend' # to delete soon 
-# ACCOUNT_EMAIL_REQUIRED = True
-# ACCOUNT_USERNAME_REQUIRED = False
-# ACCOUNT_AUTHENTICATION_METHOD = 'email'
+SENDGRID_SANDBOX_MODE_IN_DEBUG = False
+# ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -266,3 +261,24 @@ SECURE_HSTS_SECONDS = 31536000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 '''
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+}
