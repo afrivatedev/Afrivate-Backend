@@ -68,7 +68,7 @@ INSTALLED_APPS = [
     'sendgrid_backend',
 
     # for s3 strorage
-    # 'storages',
+    'storages',
 
     #django apps
     'Authentication',
