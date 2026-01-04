@@ -22,11 +22,6 @@ urlpatterns = [
     path('logout/', LogoutView.as_view(), name='logout'),
     
     path('verify-otp/', OtpVerifyView.as_view(), name='verify-otp'),  # new path for verifying OTP
-    
-    path('waitlist/', WaitlistEmailView.as_view(), name='waitlist-email'),
-    path('waitlist/stats/', WaitlistStatsView.as_view(), name='waitlist-stats'),
-
     path('verify-email/', VerifyEmailView.as_view(), name='verify-email'),
-
 ]
-    # path('verify-waitlist-email/', VerifyWaitlistEmailView.as_view(), name='verify-waitlist-email'),
+    
