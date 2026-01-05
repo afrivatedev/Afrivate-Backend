@@ -11,11 +11,11 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 import os 
 from pathlib import Path
-# from dotenv import load_dotenv
+from dotenv import load_dotenv
 from datetime import timedelta
 
 
-# load_dotenv() # no need for this when using a docker compose file.
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -25,7 +25,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get('SECRET_KEY', "changeme")
+SECRET_KEY = os.environ.get('SECRET_KEY')
 
 '''
 Generate a new secret key for production and keep it secret.
@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
     "corsheaders",
     'drf_yasg',
+    'sendgrid_backend',
 
     # for s3 strorage
     'storages',
@@ -74,7 +75,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    # 'whitenoise.middleware.WhiteNoiseMiddleware', # we plan on using nginx for static file serving
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     "corsheaders.middleware.CorsMiddleware",
     'django.middleware.common.CommonMiddleware',
@@ -125,8 +126,9 @@ STORAGES = {
             # Add any specific options here if needed
         },
     },
+# This tells WhiteNoise to compress and cache your files (improves performance)
     "staticfiles": {
-        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
     },
 }
 
@@ -188,8 +190,10 @@ USE_TZ = True
 STATIC_URL = "/static/"
 
 # This is where collectstatic will put all files for production
-# STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-STATIC_ROOT = "/vol/web/static"
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+# This tells WhiteNoise to compress and cache your files (improves performance)
+
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -204,18 +208,12 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 # Email configuration
-# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'  # Use your email provider's SMTP server
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = os.getenv("GMAIL_ACCT")  # Change later to Afrivates official email
-EMAIL_HOST_PASSWORD = os.getenv("GMAIL_PWD")  # Your email password or app password
-DEFAULT_FROM_EMAIL = 'Afrivate Support <noreply@afrivate.com>'
+EMAIL_BACKEND = os.getenv("DJANGO_EMAIL_BACKEND") # For Production purposes
+SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL")
 
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend' # to delete soon 
-# ACCOUNT_EMAIL_REQUIRED = True
-# ACCOUNT_USERNAME_REQUIRED = False
-# ACCOUNT_AUTHENTICATION_METHOD = 'email'
+SENDGRID_SANDBOX_MODE_IN_DEBUG = False
+# ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -246,7 +244,8 @@ SIMPLE_JWT = {
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "https://joshuaimmortal.github.io",
-    'https://afrivate-backend.onrender.com'
+    'https://afrivate-backend.onrender.com',
+    'https://afrivate-tech.github.io'
 ]
 
 CORS_ALLOW_ALL_ORIGINS = False
@@ -264,3 +263,24 @@ SECURE_HSTS_SECONDS = 31536000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 '''
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+}
