@@ -12,8 +12,8 @@ ENV PYTHONUNBUFFERED=1
 #also it choses the port to expose
 COPY ./requirements.txt /tmp/requirements.txt
 COPY ./requirements.dev.txt /tmp/requirements.dev.txt
+COPY ./scripts /scripts
 COPY ./app /app
-
 WORKDIR /app
 EXPOSE 8000
 
@@ -40,10 +40,14 @@ RUN python -m venv /py && \
       django-user &&\
     mkdir -p /vol/web/media && \
     mkdir -p /vol/web/static && \
-    chown -R django-user:django-user /vol/web/media /vol/web/static
+    chown -R django-user:django-user /vol && \
+    chmod -R 755 /vol && \
+    chmod -R +x /scripts
 #this block helps us define our path to our user defined variables, executables
-ENV PATH="/py/bin:$PATH"
+ENV PATH="/scripts:/py/bin:$PATH"
 
 #this tells the docker container the user to switch to. all of the commands 
 #ran prior to this are actually run using the root user privilege.
-USER django-user 
+USER django-user
+
+CMD ["run.sh"]
