@@ -1,11 +1,13 @@
 from rest_framework import serializers, status
-# from Authentication.backends import User
-from .models import CustomUser, OtpToken, WaitlistEmail
+
+from .models import CustomUser, WaitlistEmail, EmailVerification
+
 from django.contrib.auth import authenticate
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.contrib.auth.password_validation import validate_password
-import logging
+from django.db import transaction
 
+import logging
 
 # Create your serializers here.
 class CustomUserRegistrationSerializer(serializers.ModelSerializer):
@@ -73,6 +75,19 @@ class LogoutSerializer(serializers.Serializer):
 class ForgotPasswordSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
+    def validate_email(self, value):
+        email = value.lower().strip()
+        
+        try:
+            user = CustomUser.objects.get(email=email)
+            if not user.is_email_verified:
+                raise serializers.ValidationError(
+                    "Please verify your email before resetting password."
+                )
+            return email
+            
+        except CustomUser.DoesNotExist:
+            return email
 
 class ResetPasswordSerializer(serializers.Serializer):
     uid = serializers.CharField()  # what is uid here?
@@ -117,9 +132,6 @@ class ChangePasswordSerializer(serializers.Serializer):
         return data
 
 
-class ProfileSerializer(serializers.ModelSerializer):
-    pass
-
 class OTPRequestSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
@@ -136,41 +148,47 @@ class OTPRequestSerializer(serializers.Serializer):
 
 
 class VerifyOTPSerializer(serializers.Serializer):
+    email = serializers.EmailField()
     otp = serializers.CharField(max_length=6)
 
     class Meta:
         fields = ['otp']
 
     def validate(self, attrs):
-        otp_code = attrs.get('otp')
+        email = attrs.get('email').lower().strip()
+        otp = attrs.get('otp')
 
         # Get the OTP instance
         try:
-            otp_instance = OtpToken.objects.get(otp=otp_code, is_used=False, expired=False)
-        except OtpToken.DoesNotExist:
-            raise serializers.ValidationError("Invalid or expired OTP")
+            verification = EmailVerification.objects.filter(
+                email=email,
+                token=otp,
+                verification_type='password_reset',
+                is_verified=False
+            ).order_by('-created_at').first()
 
-        user = otp_instance.user
+            if not verification:
+                raise serializers.ValidationError({
+                    'otp': 'Invalid OTP code'
+                })
 
-        # Check if user exists
-        if not user:
-            raise serializers.ValidationError("No user associated with this OTP")
+            if verification.is_expired():
+                raise serializers.ValidationError({
+                    'otp': 'OTP has expired. Please request a new one.'
+                })
 
-        # Check if OTP is expired
-        if otp_instance.is_expired():
-            otp_instance.mark_as_expired()
-            raise serializers.ValidationError("OTP has expired")
+            user = CustomUser.objects.get(email=email)
 
-        # Mark OTP as used and expired
-        otp_instance.mark_as_used()
-        otp_instance.mark_as_expired()
+            attrs['verification'] = verification
+            attrs['user'] = user
 
-        # Add user to validated data so the view can access it
-        attrs['user'] = user
+        except CustomUser.DoesNotExist:
+            raise serializers.ValidationError({
+                'email': 'User not found'
+            })
 
-        return attrs
     
-class waitlistEmailSerializer(serializers.ModelSerializer):
+class WaitlistEmailSerializer(serializers.ModelSerializer):
     class Meta:
         model = WaitlistEmail
         fields = ['email', 'name']
@@ -179,22 +197,73 @@ class waitlistEmailSerializer(serializers.ModelSerializer):
             'email': {'required': True}
         }
 
-        def validate_email(self, value):
-            # Check if email already exists in the waitlist
-            if WaitlistEmail.objects.filter(email=value).exists():
-                raise serializers.ValidationError("This email is already in the waitlist.")
-            return value
-        
-        def create(self, validated_data):
-            email = validated_data.get('email')
+    def create(self, validated_data):
+        email = validated_data['email']
 
-            waitlist_email = WaitlistEmail.objects.filter(email=email).first()
-            if waitlist_email:
-                raise serializers.ValidationError({
-                    "email": "This email is already in the waitlist."
-                })
-            return WaitlistEmail.objects.create(**validated_data)
+        # Using atomic to ensure both records are actually created together
+        with transaction.atomic():
+
+            # Get or Create the waitlist entry
+            waitlist_entry, created = WaitlistEmail.objects.get_or_create(
+            email=email,
+            defaults={'name': validated_data.get('name')}
+            )
+
+            # Create the Verification Token 
+            verification = EmailVerification.create_verification(
+                email=email,
+                verification_type='waitlist'
+            )
+
+            # now attach verification to the waitlist entry
+            waitlist_entry.verification = verification
+            waitlist_entry.save()
+
+            return waitlist_entry
     
+    def validate_email(self, value):
+        return value.lower().strip()
+        
+
+class VerifyEmailSerializer(serializers.Serializer):
+    # email = serializers.EmailField()    
+    token = serializers.CharField(max_length=64)
+
+    def validate_token(self, value):
+        try:
+            self.verification_obj = EmailVerification.objects.get(token=value)
+            
+            if self.verification_obj.is_verified:
+                raise serializers.ValidationError("This verification link has already been used.")
+            
+            if self.verification_obj.is_expired():
+                raise serializers.ValidationError("This verification link has expired.")
+            
+            return value
+        except EmailVerification.DoesNotExist:
+            raise serializers.ValidationError("Invalid verification token.")
+
+    def verify(self):
+        """Process the verification"""
+       
+        verification = self.verification_obj    
+        # Mark verification as complete
+        verification.mark_verified()
+        
+        # Update model based on verification type
+        if verification.verification_type == 'waitlist':
+            if hasattr(verification, 'waitlist_email'):
+                verification.waitlist_email.is_verified = True
+                verification.waitlist_email.save()
+        
+        elif verification.verification_type == 'user_signup':
+            if verification.user:
+                verification.user.is_email_verified = True
+                verification.user.save()
+        
+        return verification
+
+
 # waitlisrt stats serializer
 '''
     total_signups
@@ -202,3 +271,34 @@ class waitlistEmailSerializer(serializers.ModelSerializer):
     signups_this_week 
     signups_this_month
 '''
+class WaitlistStatsSerializer(serializers.Serializer):
+    """Serializer for waitlist statistics"""
+    total_signups = serializers.IntegerField()
+    verified_signups = serializers.IntegerField()
+    signups_today = serializers.IntegerField()
+    signups_this_week = serializers.IntegerField()
+    signups_this_month = serializers.IntegerField()
+    
+    def get_stats(self):
+        """Calculate waitlist statistics"""
+        from datetime import datetime, timedelta
+        
+        now = datetime.now()
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        week_start = now - timedelta(days=7)
+        month_start = now - timedelta(days=30)
+        
+        total = WaitlistEmail.objects.count()
+        verified = WaitlistEmail.objects.filter(is_verified=True).count()
+        today = WaitlistEmail.objects.filter(created_at__gte=today_start).count()
+        week = WaitlistEmail.objects.filter(created_at__gte=week_start).count()
+        month = WaitlistEmail.objects.filter(created_at__gte=month_start).count()
+        
+        return {
+            'total_signups': total,
+            'verified_signups': verified,
+            'signups_today': today,
+            'signups_this_week': week,
+            'signups_this_month': month
+        }
+    
