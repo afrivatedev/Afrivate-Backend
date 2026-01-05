@@ -11,11 +11,11 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 import os 
 from pathlib import Path
-from dotenv import load_dotenv
+# from dotenv import load_dotenv
 from datetime import timedelta
 
 
-load_dotenv()
+# load_dotenv() # no need for this when using a docker compose file.
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -25,7 +25,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get('SECRET_KEY')
+SECRET_KEY = os.environ.get('SECRET_KEY', "changeme")
 
 '''
 Generate a new secret key for production and keep it secret.
@@ -37,7 +37,13 @@ and set it as an environment variable.
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = bool(int(os.environ.get("DEBUG","0")))  # set to 0 in production
 
-ALLOWED_HOSTS = ['afrivate-backend.onrender.com', "localhost", "127.0.0.1"] 
+ALLOWED_HOSTS = []
+ALLOWED_HOSTS.extend(
+    filter(
+        None,
+        os.environ.get("ALLOWED_HOSTS", "").split(","),
+    )
+)
 
 
 # Application definition
@@ -68,7 +74,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
+    # 'whitenoise.middleware.WhiteNoiseMiddleware', # we plan on using nginx for static file serving
     'django.contrib.sessions.middleware.SessionMiddleware',
     "corsheaders.middleware.CorsMiddleware",
     'django.middleware.common.CommonMiddleware',
@@ -108,6 +114,7 @@ DATABASES = {
          'NAME': os.environ.get('DB_NAME'),
          'USER': os.environ.get('DB_USER'),
          'PASSWORD': os.environ.get('DB_PASS'),
+         'PORT': os.environ.get('DB_PORT'),
      },
 }
 
@@ -119,8 +126,7 @@ STORAGES = {
         },
     },
     "staticfiles": {
-        "BACKEND": 'django.contrib.staticfiles.storage.StaticFilesStorage',
-        # Or  if keeping static locally
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
     },
 }
 
@@ -137,7 +143,6 @@ AWS_STORAGE_BUCKET_NAME = os.environ.get("AWS_STORAGE_BUCKET_NAME")
 AWS_S3_ENDPOINT_URL = os.environ.get("AWS_S3_ENDPOINT_URL")   
 AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME")
 
-print(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_STORAGE_BUCKET_NAME)
 
 # Optional, recommended
 AWS_S3_FILE_OVERWRITE = False
@@ -183,14 +188,8 @@ USE_TZ = True
 STATIC_URL = "/static/"
 
 # This is where collectstatic will put all files for production
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-
-# This tells WhiteNoise to compress and cache your files (improves performance)
-STORAGES = {
-    "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
-    },
-}
+# STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATIC_ROOT = "/vol/web/static"
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
