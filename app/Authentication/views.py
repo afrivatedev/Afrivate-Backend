@@ -17,7 +17,7 @@ from django.contrib.auth.tokens import default_token_generator
 # from django.utils.encoding import force_bytes, force_str
 
 
-from .utils import sendotp_via_email
+from .utils import sendotp_via_email, send_waitlist_verification_email
 
 # Create your views here.
 def index(request):
@@ -80,9 +80,35 @@ class ForgotPasswordView(generics.GenericAPIView):
         # send password reset email
         try:
             user = CustomUser.objects.get(email=email)
-            sendotp_via_email(user.email)
-            logging.info(f"Email sent successfully to {email}")  # For debugging
 
+            # Check if email is verified
+            if not user.is_email_verified:
+                return Response({
+                    "success": False,
+                    "message": "Please verify your email first."
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            verification, otp = EmailVerification.create_otp_verification(
+                email=email,
+                verification_type='password_reset',
+                user=user,
+                expiry_minutes=10
+            )
+            
+            email_sent = sendotp_via_email(user.email) # ........
+            
+            if email_sent:
+                logger.info(f"Password reset OTP sent to {email}")
+                return Response({
+                    "success": True,
+                    "message": "If the email exists, a password reset code has been sent."
+                }, status=status.HTTP_200_OK)
+            else:
+                return Response({
+                    "success": False,
+                    "message": "Failed to send OTP. Please try again."
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
         except CustomUser.DoesNotExist:
             logging.warning(f"Password reset requested for a non existent user with non-existent email-> {email}")
 
@@ -167,9 +193,6 @@ class LogoutView(APIView):
             logging.error(f"Logout error for user {request.user.id}: {e}")
             return Response({"error": "Invalid token"}, status=status.HTTP_400_BAD_REQUEST)
 
-# user profile view
-class ProfileView(generics.RetrieveAPIView):
-    pass  # Implementation goes here
 
 # user deletion view
 class DeleteUserView(generics.DestroyAPIView):  
@@ -179,13 +202,17 @@ class DeleteUserView(generics.DestroyAPIView):
 class OtpVerifyView(generics.GenericAPIView): 
     serializer_class = VerifyOTPSerializer  
     # permission_classes = [IsAuthenticated]
-
+            
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
         # Get the verified user from serializer
+        verification = serializer.validated_data['verification']
         user = serializer.validated_data['user']
+
+        logging.info(f"OTP verified for user {user.email}")
+        
         
         # Generate tokens
         tokens = user.tokens()
@@ -199,7 +226,8 @@ class OtpVerifyView(generics.GenericAPIView):
     
 # waitlist email view
 class WaitlistEmailView(generics.GenericAPIView):
-    serializer_class = waitlistEmailSerializer
+    """ waitlist email submissions!!"""
+    serializer_class = WaitlistEmailSerializer
     permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
@@ -210,15 +238,28 @@ class WaitlistEmailView(generics.GenericAPIView):
                 user = serializer.save()
                 
                 # SEND CONFIRMATION EMAIL
+                email_sent = send_waitlist_verification_email(
+                    request,
+                    user.verification.token, 
+                    user.email)
 
-                return Response({
-                    "success": True,
-                    'message': "Check your email for confirmation",
-                    'email': user.email
-                    },
-                    status=status.HTTP_201_CREATED)
+                if email_sent:
+                    return Response({
+                        "success": True,
+                        'message': "Check your email for confirmation",
+                        'email': user.email
+                        },
+                        status=status.HTTP_201_CREATED)
+                else:
+                    return Response({
+                        'success': False,
+                        'message': 'Failed to send verification email. Please try again.'
+                    }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
                 
             except Exception as e:
+                #logging.error(f"Error in waitlist signup: {str(e)}")
+                logging.error(f"Waitlist signup failed for email {request.data.get('email')}: {str(e)}", exc_info=True)
+                
                 return Response({
                    'success': False,
                    'message': ' An error occured. Please try again.' 
@@ -226,44 +267,83 @@ class WaitlistEmailView(generics.GenericAPIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             
         return Response({
-            "message": "Email added to waitlist successfully",
+            "success": False,
+            'message': "Invalid data",
             'errors': serializer.errors
-            },status=status.HTTP_201_CREATED)
+        }, status=status.HTTP_400_BAD_REQUEST)
     
-'''
-class VerifyEmail(generics.GenericAPIView):
+class VerifyEmailView(generics.GenericAPIView):
+    permission_classes = [AllowAny]
+    serializer_class = VerifyEmailSerializer
+    
+    def get(self, request, *args, **kwargs):
+        token = request.query_params.get('token')
+
+        if not token:
+            return Response({
+                'success': False,
+                'message': 'Verification token is required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        serializer = self.get_serializer(data={'token': token})
+
+        if serializer.is_valid():
+            try:
+                verification = serializer.verify()
+                return Response({
+                    'success': True,
+                    'message': 'Email verified successfully! Thank you for joining our waitlist.',
+                    'email': verification.email
+                }, status=status.HTTP_200_OK)
+                
+            except Exception as e:
+                logging.error(f"Error verifying email: {str(e)}")
+                return Response({
+                    'success': False,
+                    'message': 'An error occurred during verification'
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                
+        return Response({
+            'success': False,
+            'message': serializer.errors.get('token', ['Invalid token'])[0]
+        }, status=status.HTTP_400_BAD_REQUEST)
 
     def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
         
-        # get user email
-    
-        # create email payload
-
-        # get redirect link
-
-        # create a token generator
-
-        # move this to utils
-        user = CustomUser.objects.get(email=email) 
+        if serializer.is_valid():
+            try:
+                verification = serializer.verify()
+                return Response({
+                    'success': True,
+                    'message': 'Email verified successfully!',
+                    'email': verification.email
+                }, status=status.HTTP_200_OK)
                 
-        subject = "Verify Email"
-        message = f"""
-            Dear {user.username},
-            Your email has been successfully verified 
-                a redirect link to login page. {link}
+            except Exception as e:
+                logging.error(f"Error verifying email: {str(e)}")
+                return Response({
+                    'success': False,
+                    'message': 'An error occurred during verification'
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        return Response({
+            'success': False,
+            'message': serializer.errors.get('token', ['Invalid token'])[0]
+        }, status=status.HTTP_400_BAD_REQUEST)
 
-            If you didn't request this, please ignore this email.
-            This otp will expire in 10 minutes. 
-            """
-        try:
-            email_message = EmailMessage(subject=subject,
-                                        body=message,
-                                            from_email=settings.DEFAULT_FROM_EMAIL, 
-                                            to=[email]
-                                            )
-            # Send the email, silencing any errors that occur
-            email_message.send(fail_silently=False)
-            
-'''
 
-# waitlist stats view
+class WaitlistStatsView(generics.GenericAPIView):
+    """Get waitlist statistics - Admin only"""
+    serializer_class = WaitlistStatsSerializer
+    # permission_classes = [IsAdminUser]
+
+    def get(self, request, *args, **kwargs):
+        serializer = self.get_serializer()
+        stats = serializer.get_stats()
+        
+        return Response({
+            'success': True,
+            'data': stats
+        }, status=status.HTTP_200_OK)
+    

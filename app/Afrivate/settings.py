@@ -13,18 +13,20 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 from datetime import timedelta
+import  dj_database_url
 
-load_dotenv() 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env")
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-+3l8cc7a0_y1%p2$7(s!3)okt9w7h7%ar0elov%0z@)vc10obh' 
+SECRET_KEY = os.environ.get('SECRET_KEY')
+
 
 '''
 Generate a new secret key for production and keep it secret.
@@ -34,9 +36,15 @@ and set it as an environment variable.
 '''
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = bool(int(os.environ.get("DEBUG", 0)))
+DEBUG = bool(int(os.environ.get("DEBUG","0")))  # set to 0 in production
 
-ALLOWED_HOSTS = ['afrivate-backend.onrender.com', "localhost", "127.0.0.1","https://afrivate-tech.github.io" ] 
+ALLOWED_HOSTS = []
+ALLOWED_HOSTS.extend(
+    filter(
+        None,
+        os.environ.get("ALLOWED_HOSTS", "").split(","),
+    )
+)
 
 
 # Application definition
@@ -49,13 +57,21 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
+    #dependencies
     'rest_framework', 
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
     "corsheaders",
     'drf_yasg',
+    # 'sendgrid_backend',
+
+    # for s3 strorage
+    'storages',
+
+    #django apps
     'Authentication',
     'user_database',
+    'profiles',
 ]
 
 MIDDLEWARE = [
@@ -94,14 +110,44 @@ WSGI_APPLICATION = 'Afrivate.wsgi.application'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-         'ENGINE': 'django.db.backends.postgresql',
-         'HOST': os.environ.get('DB_HOST'),
-         'NAME': os.environ.get('DB_NAME'),
-         'USER': os.environ.get('DB_USER'),
-         'PASSWORD': os.environ.get('DB_PASS'),
-     },
+    "default": dj_database_url.parse(
+        os.getenv("DB_URL"),
+        conn_max_age=0,
+    )
 }
+
+STORAGES = {
+    "default": {
+        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+        "OPTIONS": {
+            # Add any specific options here if needed
+        },
+    },
+# This tells WhiteNoise to compress and cache your files (improves performance)
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
+
+
+MAX_PROFILE_PIC_MB = 5
+PROFILE_PIC_ALLOWED_FORMATS = {"JPEG", "JPG", "PNG", "WEBP"}
+
+
+AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
+AWS_STORAGE_BUCKET_NAME = os.environ.get("AWS_STORAGE_BUCKET_NAME")
+
+# S3 endpoint
+AWS_S3_ENDPOINT_URL = os.environ.get("AWS_S3_ENDPOINT_URL")   
+AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME")
+
+
+# Optional, recommended
+AWS_S3_FILE_OVERWRITE = False
+AWS_DEFAULT_ACL = None
+
+
 
 
 # Password validation
@@ -138,17 +184,13 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = "/static/"
 
 # This is where collectstatic will put all files for production
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 # This tells WhiteNoise to compress and cache your files (improves performance)
-STORAGES = {
-    "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
-    },
-}
+
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -163,23 +205,28 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 # Email configuration
-# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'  # Use your email provider's SMTP server
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = os.getenv("GMAIL_ACCT")  # Change later to Afrivates official email
-EMAIL_HOST_PASSWORD = os.getenv("GMAIL_PWD")  # Your email password or app password
-DEFAULT_FROM_EMAIL = 'Afrivate Support <noreply@afrivate.com>'
+EMAIL_BACKEND = os.getenv("DJANGO_EMAIL_BACKEND") # For Production purposes
+SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL")
 
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend' # to delete soon 
-# ACCOUNT_EMAIL_REQUIRED = True
-# ACCOUNT_USERNAME_REQUIRED = False
-# ACCOUNT_AUTHENTICATION_METHOD = 'email'
+SENDGRID_SANDBOX_MODE_IN_DEBUG = False
+# ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     )
+}
+
+SWAGGER_SETTINGS = {
+    "SECURITY_DEFINITIONS": {
+        "Bearer": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header",
+            "description": "JWT Authorization header using Bearer scheme. Example: Bearer <token>",
+        }
+    }
 }
 
 SIMPLE_JWT = {
@@ -213,3 +260,24 @@ SECURE_HSTS_SECONDS = 31536000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 '''
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+}
