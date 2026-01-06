@@ -13,12 +13,12 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 from datetime import timedelta
+import  dj_database_url
 
-
-load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env")
 
 
 # Quick-start development settings - unsuitable for production
@@ -26,6 +26,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get('SECRET_KEY')
+
 
 '''
 Generate a new secret key for production and keep it secret.
@@ -62,7 +63,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
     "corsheaders",
     'drf_yasg',
-    'sendgrid_backend',
+    # 'sendgrid_backend',
 
     # for s3 strorage
     'storages',
@@ -109,14 +110,10 @@ WSGI_APPLICATION = 'Afrivate.wsgi.application'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-         'ENGINE': 'django.db.backends.postgresql',
-         'HOST': os.environ.get('DB_HOST'),
-         'NAME': os.environ.get('DB_NAME'),
-         'USER': os.environ.get('DB_USER'),
-         'PASSWORD': os.environ.get('DB_PASS'),
-         'PORT': os.environ.get('DB_PORT'),
-     },
+    "default": dj_database_url.parse(
+        os.getenv("DB_URL"),
+        conn_max_age=0,
+    )
 }
 
 STORAGES = {
