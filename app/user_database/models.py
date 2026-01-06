@@ -1,8 +1,13 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.utils import timezone
-from rest_framework_simplejwt.tokens import RefreshToken
+from django.conf import settings
 from django.core.validators import EmailValidator
+
+from rest_framework_simplejwt.tokens import RefreshToken
+
+import uuid
+from datetime import timedelta
 
 # Create your models here.
 class CustomUser(AbstractUser):
@@ -18,10 +23,10 @@ class CustomUser(AbstractUser):
     is_email_verified = models.BooleanField(default=False)
 
     # Field to store the OTP secret key
-    # otp_secret_key = models.CharField(max_length=32, null=True, blank=True)
-    reset_password_otp = models.IntegerField(null=True, blank=True)
-    reset_password_otp_expiry = models.DateTimeField(null=True, blank=True)
-    reset_password_otp_used = models.BooleanField(default=False)
+    # # otp_secret_key = models.CharField(max_length=32, null=True, blank=True)
+    # reset_password_otp = models.IntegerField(null=True, blank=True)
+    # reset_password_otp_expiry = models.DateTimeField(null=True, blank=True)
+    # reset_password_otp_used = models.BooleanField(default=False)
 
     # USERNAME_FIELD = 'email_or_username' # i cant do this in abstract user
     USERNAME_FIELD = 'email'
@@ -44,39 +49,121 @@ class CustomUser(AbstractUser):
     def __str__(self):
         return self.username
 
-class OtpToken(models.Model):
-    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
-    otp = models.CharField(max_length=6)
-    is_used = models.BooleanField(default=False)
-    expired = models.BooleanField(default=False)
+class EmailVerification(models.Model):
+    """Reusable email verification model for both waitlist and user registration"""
+    VERIFICATION_TYPE_CHOICES = (
+        ('waitlist', 'Waitlist'),
+        ('user_signup', 'User Signup'),
+        ('password_reset', 'Password Reset'),
+        # ('email_change', 'Email Change')
+    )
+
+    #link to user if they exist (null for waitlist signups)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.CASCADE,
+        null=True, blank=True)
+    
+    email = models.EmailField(
+        validators=[EmailValidator()],
+        null=False, blank=False,
+        db_index=True)
+    
+    # can actually be a uuid for links or a 6-digit string for otps
+    token = models.CharField(max_length=64, unique=True, db_index=True)
+
+    verification_type = models.CharField(max_length=20, choices=VERIFICATION_TYPE_CHOICES)
+    is_verified = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
-
-    def is_valid(self):
-        # Check if the OTP is still valid (e.g., within the last 10 minutes)
-        return timezone.now() - self.created_at <= timezone.timedelta(minutes=10)
-
-    def is_expired(self):
-        # Check if the OTP has expired (e.g., after 10 minutes)
-        expiration_time = timezone.now() - self.created_at
-        return expiration_time > timezone.timedelta(minutes=10)
-
-    def mark_as_used(self):
-        self.is_used = True
-        self.save()
-
-    def mark_as_expired(self):
-        self.expired = True
-        self.save()
+    expires_at = models.DateTimeField()
+    verified_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
-        return f"OTP for {self.user.username}: {self.otp}"
+        return f"{self.email} - {self.verification_type} - {'Verified' if self.is_verified else 'Pending'}"
     
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Email Verification'
+        verbose_name_plural = 'Email Verifications' 
+
+    @classmethod
+    def create_verification(cls, email, verification_type, user=None, expiry_minutes=20):
+        """Factory method to create a new verification token"""
+        email = email.lower().strip()
+        token = uuid.uuid4().hex # send this with the mail link
+        expires_at = timezone.now() + timedelta(minutes=expiry_minutes)
+        
+        return cls.objects.create(
+            email=email.lower().strip(),
+            verification_type=verification_type,
+            token=token,
+            expires_at=expires_at,
+            user=user
+        )
+    
+    @classmethod
+    def create_otp_verification(cls, email, verification_type, user=None, expiry_minutes=10):
+        
+        import random
+
+        email = email.lower().strip()
+        otp = str(random.randint(100000, 999999))
+        expires_at = timezone.now() + timedelta(minutes=expiry_minutes)
+        
+        verification = cls.objects.create(
+            email=email,
+            verification_type=verification_type,
+            token=otp,
+            expires_at=expires_at,
+            user=user
+        )
+        return verification, otp
+    
+    
+    def is_valid(self):
+        """Check if token is still valid (not expired and not already verified)"""
+        if self.is_verified:
+            return False
+        return timezone.now() < self.expires_at
+    
+    def mark_used(self):
+        """Mark as used"""
+        self.is_verified = True
+        self.save()
+    
+    def mark_verified(self):
+        """Mark as verified"""
+        self.is_verified = True
+        self.verified_at = timezone.now()
+        self.save()
+    
+    def is_expired(self):
+        """Check if token has expired"""
+        return timezone.now() >= self.expires_at
+
 class WaitlistEmail(models.Model):
     name = models.CharField(max_length=255, null=True, blank=True)
-    referral_source = models.CharField(max_length=100, null=True, blank=True)
-    email = models.EmailField(unique=True, null=False, blank=False, db_index=True, validators=[EmailValidator()])
+    email = models.EmailField(
+        unique=True, 
+        null=False, 
+        blank=False, 
+        db_index=True, 
+        validators=[EmailValidator()]
+    )
+    
     created_at = models.DateTimeField(auto_now_add=True)
+    is_verified = models.BooleanField(default=False)
 
+    verification = models.OneToOneField(
+        EmailVerification,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='waitlist_email'
+    )
+
+    # Metadata fields
+    referral_source = models.CharField(max_length=100, null=True, blank=True)
     # is_notified = models.BooleanField(default=False)
 
     def __str__(self):
