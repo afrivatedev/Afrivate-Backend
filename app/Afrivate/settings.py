@@ -121,7 +121,7 @@ WSGI_APPLICATION = 'Afrivate.wsgi.application'
 
 DATABASES = {
     "default": dj_database_url.parse(
-        os.getenv("DB_URL"),
+        os.environ.get("DB_URL"),
         conn_max_age=0,
     )
 }
