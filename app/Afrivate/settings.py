@@ -38,6 +38,15 @@ and set it as an environment variable.
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = bool(int(os.environ.get("DEBUG","0")))  # set to 0 in production
 
+if DEBUG:
+    # Local deve
+    SITE_DOMAIN = "http://127.0.0.1:8000"
+    FRONTEND_URL = "http://localhost:3000"
+else:
+    # Production environment (Actual live URLs)
+    SITE_DOMAIN = os.environ.get("SITE_DOMAIN",'https://afrivate-backend.onrender.com')
+    FRONTEND_URL = os.environ.get("FRONTEND_URL",'https://afrivate-tech.github.io')
+
 ALLOWED_HOSTS = []
 ALLOWED_HOSTS.extend(
     filter(
@@ -72,6 +81,7 @@ INSTALLED_APPS = [
     'Authentication',
     'user_database',
     'profiles',
+    'waitlist',
 ]
 
 MIDDLEWARE = [
@@ -240,7 +250,7 @@ SIMPLE_JWT = {
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
-    "https://joshuaimmortal.github.io",
+    # "https://joshuaimmortal.github.io",
     'https://afrivate-backend.onrender.com',
     'https://afrivate-tech.github.io'
 ]
@@ -281,3 +291,30 @@ LOGGING = {
         'level': 'INFO',
     },
 }
+
+BLACKLISTED_DOMAINS = {
+    "mailinator.com",
+    "tempmail.com",
+    "10minutemail.com",
+    "guerrillamail.com",
+    "yopmail.com",
+    "trashmail.com",
+    "dispostable.com",
+}
+
+ALLOWED_DOMAINS = {
+    "gmail.com",
+    "yahoo.com",
+    "outlook.com",
+    "icloud.com",
+}
+
+BAD_PATTERNS = [
+    r"^test\d*@",
+    r"^admin@",
+    r"^info@",
+    r"^support@",
+    r"^no[-_]?reply@",
+    r"\d{6,}",          # long digit runs
+    r"(spam|fake|junk)",
+]

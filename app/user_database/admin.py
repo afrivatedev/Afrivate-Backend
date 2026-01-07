@@ -5,4 +5,3 @@ from user_database import models
 
 admin.site.register(models.CustomUser)
 admin.site.register(models.EmailVerification)
-admin.site.register(models.WaitlistEmail)
