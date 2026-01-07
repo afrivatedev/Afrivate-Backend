@@ -13,12 +13,12 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 from datetime import timedelta
+import  dj_database_url
 
-
-load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env")
 
 
 # Quick-start development settings - unsuitable for production
@@ -26,6 +26,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get('SECRET_KEY')
+
 
 '''
 Generate a new secret key for production and keep it secret.
@@ -46,7 +47,13 @@ else:
     SITE_DOMAIN = os.environ.get("SITE_DOMAIN",'https://afrivate-backend.onrender.com')
     FRONTEND_URL = os.environ.get("FRONTEND_URL",'https://afrivate-tech.github.io')
 
-ALLOWED_HOSTS = ['afrivate-backend.onrender.com', "localhost", "127.0.0.1","https://afrivate-tech.github.io" ] 
+ALLOWED_HOSTS = []
+ALLOWED_HOSTS.extend(
+    filter(
+        None,
+        os.environ.get("ALLOWED_HOSTS", "").split(","),
+    )
+)
 
 
 # Application definition
@@ -65,7 +72,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
     "corsheaders",
     'drf_yasg',
-    'sendgrid_backend',
+    # 'sendgrid_backend',
 
     # for s3 strorage
     'storages',
@@ -113,13 +120,10 @@ WSGI_APPLICATION = 'Afrivate.wsgi.application'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-         'ENGINE': 'django.db.backends.postgresql',
-         'HOST': os.environ.get('DB_HOST'),
-         'NAME': os.environ.get('DB_NAME'),
-         'USER': os.environ.get('DB_USER'),
-         'PASSWORD': os.environ.get('DB_PASS'),
-     },
+    "default": dj_database_url.parse(
+        os.getenv("DB_URL"),
+        conn_max_age=0,
+    )
 }
 
 STORAGES = {
@@ -129,9 +133,9 @@ STORAGES = {
             # Add any specific options here if needed
         },
     },
+# This tells WhiteNoise to compress and cache your files (improves performance)
     "staticfiles": {
-        "BACKEND": 'django.contrib.staticfiles.storage.StaticFilesStorage',
-        # Or  if keeping static locally
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
     },
 }
 
@@ -148,7 +152,6 @@ AWS_STORAGE_BUCKET_NAME = os.environ.get("AWS_STORAGE_BUCKET_NAME")
 AWS_S3_ENDPOINT_URL = os.environ.get("AWS_S3_ENDPOINT_URL")   
 AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME")
 
-# print(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_STORAGE_BUCKET_NAME)
 
 # Optional, recommended
 AWS_S3_FILE_OVERWRITE = False
@@ -197,11 +200,7 @@ STATIC_URL = "/static/"
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 # This tells WhiteNoise to compress and cache your files (improves performance)
-STORAGES = {
-    "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
-    },
-}
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
