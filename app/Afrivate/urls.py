@@ -42,7 +42,7 @@ urlpatterns = [
     path('api-auth/', include('rest_framework.urls')),  # Django REST framework login/logout views
     
     path('api/auth/', include('Authentication.urls')),
-    path("api/waitlist/", include("waitlist.urls")),
+    # path("api/waitlist/", include("waitlist.urls")),
     path("api/profile/", include("profiles.urls")),
 
     path("", Authentication.views.index,),  # Added to serve index view
