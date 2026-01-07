@@ -72,7 +72,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
     "corsheaders",
     'drf_yasg',
-    # 'sendgrid_backend',
+    'sendgrid_backend',
 
     # for s3 strorage
     'storages',
