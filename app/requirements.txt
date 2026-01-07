@@ -38,3 +38,4 @@ whitenoise==6.11.0
 sendgrid>=6.12.5, <7.0
 django-sendgrid-v5
 dj-database-url>=3.1.0,<3.2
+email-validator
