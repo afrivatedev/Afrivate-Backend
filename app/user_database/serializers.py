@@ -1,6 +1,6 @@
 from rest_framework import serializers, status
 
-from .models import CustomUser, WaitlistEmail, EmailVerification
+from .models import CustomUser, EmailVerification
 
 from django.contrib.auth import authenticate
 from django.core.exceptions import ValidationError as DjangoValidationError
@@ -187,44 +187,6 @@ class VerifyOTPSerializer(serializers.Serializer):
                 'email': 'User not found'
             })
 
-    
-class WaitlistEmailSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = WaitlistEmail
-        fields = ['email', 'name']
-        extra_kwargs = {
-            'name': {'required': False, 'allow_blank': True},
-            'email': {'required': True}
-        }
-
-    def create(self, validated_data):
-        email = validated_data['email']
-
-        # Using atomic to ensure both records are actually created together
-        with transaction.atomic():
-
-            # Get or Create the waitlist entry
-            waitlist_entry, created = WaitlistEmail.objects.get_or_create(
-            email=email,
-            defaults={'name': validated_data.get('name')}
-            )
-
-            # Create the Verification Token 
-            verification = EmailVerification.create_verification(
-                email=email,
-                verification_type='waitlist'
-            )
-
-            # now attach verification to the waitlist entry
-            waitlist_entry.verification = verification
-            waitlist_entry.save()
-
-            return waitlist_entry
-    
-    def validate_email(self, value):
-        return value.lower().strip()
-        
-
 class VerifyEmailSerializer(serializers.Serializer):
     # email = serializers.EmailField()    
     token = serializers.CharField(max_length=64)
@@ -246,59 +208,25 @@ class VerifyEmailSerializer(serializers.Serializer):
     def verify(self):
         """Process the verification"""
        
-        verification = self.verification_obj    
-        # Mark verification as complete
-        verification.mark_verified()
-        
-        # Update model based on verification type
-        if verification.verification_type == 'waitlist':
-            if hasattr(verification, 'waitlist_email'):
-                verification.waitlist_email.is_verified = True
-                verification.waitlist_email.save()
-        
-        elif verification.verification_type == 'user_signup':
-            if verification.user:
-                verification.user.is_email_verified = True
-                verification.user.save()
-        
-        return verification
+        verification = self.verification_obj  
 
-
-# waitlisrt stats serializer
-'''
-    total_signups
-    signups_today 
-    signups_this_week 
-    signups_this_month
-'''
-class WaitlistStatsSerializer(serializers.Serializer):
-    """Serializer for waitlist statistics"""
-    total_signups = serializers.IntegerField()
-    verified_signups = serializers.IntegerField()
-    signups_today = serializers.IntegerField()
-    signups_this_week = serializers.IntegerField()
-    signups_this_month = serializers.IntegerField()
-    
-    def get_stats(self):
-        """Calculate waitlist statistics"""
-        from datetime import datetime, timedelta
-        
-        now = datetime.now()
-        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-        week_start = now - timedelta(days=7)
-        month_start = now - timedelta(days=30)
-        
-        total = WaitlistEmail.objects.count()
-        verified = WaitlistEmail.objects.filter(is_verified=True).count()
-        today = WaitlistEmail.objects.filter(created_at__gte=today_start).count()
-        week = WaitlistEmail.objects.filter(created_at__gte=week_start).count()
-        month = WaitlistEmail.objects.filter(created_at__gte=month_start).count()
-        
-        return {
-            'total_signups': total,
-            'verified_signups': verified,
-            'signups_today': today,
-            'signups_this_week': week,
-            'signups_this_month': month
-        }
-    
+        try:
+            with transaction.atomic():  
+                # Mark verification as complete
+                verification.mark_verified()
+                
+                # Update model based on verification type
+                if verification.verification_type == 'waitlist':
+                    if hasattr(verification, 'waitlist_email'):
+                        verification.waitlist_email.is_verified = True
+                        verification.waitlist_email.save()
+                
+                elif verification.verification_type == 'user_signup':
+                    if verification.user:
+                        verification.user.is_email_verified = True
+                        verification.user.save()
+                
+                return verification
+        except Exception as e:
+            logging.error(f"Error during verification process: {str(e)}")
+            raise e
