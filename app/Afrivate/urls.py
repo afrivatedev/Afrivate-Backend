@@ -38,15 +38,20 @@ schema_view = get_schema_view(
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/auth/', include('Authentication.urls')),
+    
     path('api-auth/', include('rest_framework.urls')),  # Django REST framework login/logout views
+    
+    path('api/auth/', include('Authentication.urls')),
+    path("api/waitlist/", include("waitlist.urls")),
     path("api/profile/", include("profiles.urls")),
-    path("", Authentication.views.index,),  # Added to serve index view
 
+    path("", Authentication.views.index,),  # Added to serve index view
+    
     # API Documentation
     path('api/v1/docs/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
     path('docs/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
 ]
+
 # this is to be changed to an amazon s3 bucket or any other cdn in production
 if settings.DEBUG:
     urlpatterns += static(
