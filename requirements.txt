@@ -36,4 +36,4 @@ uWSGI>=2.0.31,<2.1.0
 whitenoise==6.11.0
 # Email
 sendgrid>=6.12.5, <7.0
-dj-database-url>=3.1.0,<3.1
+dj-database-url>=3.1.0,<3.2
