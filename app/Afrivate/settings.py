@@ -45,7 +45,7 @@ if DEBUG:
 else:
     # Production environment (Actual live URLs)
     SITE_DOMAIN = os.environ.get("SITE_DOMAIN",'https://afrivate-backend.onrender.com')
-    FRONTEND_URL = os.environ.get("FRONTEND_URL",'https://afrivate-tech.github.io')
+    FRONTEND_URL = os.environ.get("FRONTEND_URL",'https://afrivate.org')
 
 ALLOWED_HOSTS = []
 ALLOWED_HOSTS.extend(
@@ -253,7 +253,9 @@ CORS_ALLOWED_ORIGINS = [
     # "https://joshuaimmortal.github.io",
     'https://afrivate-backend.onrender.com',
     'https://afrivate-tech.github.io',
-    'https://afrivate-backend-production.up.railway.app'
+    'https://afrivate-backend-production.up.railway.app',
+    'https://afrivate.org'
+    
 ]
 
 CORS_ALLOW_ALL_ORIGINS = False
