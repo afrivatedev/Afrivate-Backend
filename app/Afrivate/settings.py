@@ -254,8 +254,7 @@ CORS_ALLOWED_ORIGINS = [
     'https://afrivate-backend.onrender.com',
     'https://afrivate-tech.github.io',
     'https://afrivate-backend-production.up.railway.app',
-    'https://afrivate.org'
-    
+    'https://afrivate.org',
 ]
 
 CORS_ALLOW_ALL_ORIGINS = False
