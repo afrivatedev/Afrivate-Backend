@@ -29,6 +29,9 @@ class WaitlistEmailView(generics.GenericAPIView):
                 user = serializer.save()
                 # no more verification for waitlist
                 email_sent = send_welcome_email(user.email, user.name)
+                if not email_sent:
+                    logging.error(f"Failed to send email to {user.email}")
+                
 
                 # SEND CONFIRMATION EMAIL
                 # email_sent = send_waitlist_verification_email(
