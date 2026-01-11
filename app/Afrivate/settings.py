@@ -59,6 +59,7 @@ ALLOWED_HOSTS.extend(
 # Application definition
 
 INSTALLED_APPS = [
+    "corsheaders",
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -70,7 +71,7 @@ INSTALLED_APPS = [
     'rest_framework', 
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
-    "corsheaders",
+    
     'drf_yasg',
     'sendgrid_backend',
 
@@ -85,10 +86,11 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    "corsheaders.middleware.CorsMiddleware",
+    
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -256,8 +258,10 @@ CORS_ALLOWED_ORIGINS = [
     'https://afrivate-tech.github.io',
     'https://afrivate-backend-production.up.railway.app',
     'https://afrivate.org',
+    'https://www.afrivate.org'
 ]
 
+CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_ALL_ORIGINS = False
 # CORS_ALLOW_CREDENTIALS = True # for cookies, to be enabled later if needed
 PASSWORD_RESET_TIMEOUT = 86400  # 24 hours in seconds, COULD BE REDUCED FOR BETTER SECURITY
