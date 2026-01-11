@@ -336,5 +336,6 @@ BAD_PATTERNS = [
 
 CSRF_TRUSTED_ORIGINS = [
         'https://afrivate-backend-production.up.railway.app',
-        'https://afrivate.org',
+        'https://afrivate.org', 'https://www.afrivate.org'
     ]
+
