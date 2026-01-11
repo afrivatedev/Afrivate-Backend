@@ -44,7 +44,7 @@ if DEBUG:
     FRONTEND_URL = "http://localhost:3000"
 else:
     # Production environment (Actual live URLs)
-    SITE_DOMAIN = os.environ.get("SITE_DOMAIN",'https://afrivate-backend.onrender.com')
+    SITE_DOMAIN = os.environ.get("SITE_DOMAIN",'https://afrivate-backend-production.up.railway.app')
     FRONTEND_URL = os.environ.get("FRONTEND_URL",'https://afrivate.org')
 
 ALLOWED_HOSTS = []
@@ -122,7 +122,8 @@ WSGI_APPLICATION = 'Afrivate.wsgi.application'
 DATABASES = {
     "default": dj_database_url.parse(
         os.environ.get("DB_URL"),
-        conn_max_age=0,
+        conn_max_age=600,
+        ssl_require=True,
     )
 }
 
@@ -292,6 +293,18 @@ LOGGING = {
         'handlers': ['console'],
         'level': 'INFO',
     },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'waitlist': {  
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+    },
 }
 
 BLACKLISTED_DOMAINS = {
@@ -320,3 +333,8 @@ BAD_PATTERNS = [
     r"\d{6,}",          # long digit runs
     r"(spam|fake|junk)",
 ]
+
+CSRF_TRUSTED_ORIGINS = [
+        'https://afrivate-backend-production.up.railway.app',
+        'https://afrivate.org',
+    ]
