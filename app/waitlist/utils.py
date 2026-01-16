@@ -63,13 +63,13 @@ def send_waitlist_verification_email(request, token, email):
             </div>
             
             <div style="text-align: center; margin-top: 20px; color: #999; font-size: 12px;">
-                <p>&copy; 2024 Afrivate Tech. All rights reserved.</p>
+                <p>&copy; 2026 Afrivate Tech. All rights reserved.</p>
             </div>
         </body>
         </html>
         '''
     
-    subject='Verify Your Email - Afrivate Waitlist'
+    subject='Welcome  - Afrivate Waitlist'
     try:
         message = Mail(
         from_email=Email(settings.DEFAULT_FROM_EMAIL, 'Afrivate Tech'),
@@ -93,7 +93,7 @@ def send_waitlist_verification_email(request, token, email):
         return False
 
 def send_welcome_email(email, name):
-    """Send welcome email to new waitlist user"""
+    """Send welcome email to new waitlist user using SendGrid"""
     subject = 'Welcome to Afrivate!'
 
     html_content=f'''
@@ -109,15 +109,25 @@ def send_welcome_email(email, name):
             </div>
             
             <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px;">
-                <h2 style="color: #333; margin-top: 0;">Verify Your Email Address</h2>
+                <h2 style="color: #333; margin-top: 0;">Welcome to Afrivate!</h2>
                 
-                <p>Thank you for joining the Afrivate waitlist! We're excited to have you on board.</p>
-                <p>Stay tuned for updates and exciting news about our launch.</p>
-            
+                <p>Thank you for joining the Afrivate Volunteer Module waitlist. We’re excited to have you with us.</p>
+                <p>By joining the waitlist, you’ve taken the first step toward gaining real-world experience, building practical skills, and contributing meaningfully to projects that drive Africa forward.</p>
+                <p>Here’s what happens next:</p>
+                <ul>
+                    <li>You’ll be among the first to get access when the Volunteer Module launches</li>
+                    <li>We’ll share important updates, timelines, and next steps directly with you</li>
+                    <li>You’ll receive early information on how to get started and what to expect</li>
+                </ul>
+
+                <p>Afrivate isn’t just about volunteering, it’s about growth, clarity, and community. We’re intentional about building opportunities that help you learn by doing and stand out professionally.</p>
+                <p>We’ll be in touch soon. Welcome to the journey!</p>
+                <p>— The Afrivate Team</p>
             <div style="text-align: center; margin-top: 20px; color: #999; font-size: 12px;">
-                <p>&copy; 2024 Afrivate Tech. All rights reserved.</p>
+                <p>&copy; 2026 Afrivate Tech. All rights reserved.</p>
             </div>
         </body>
+
         </html>
         '''
 

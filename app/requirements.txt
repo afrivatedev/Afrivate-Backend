@@ -31,11 +31,10 @@ sqlparse>=0.5.3, <1.0 # for sql
 tzdata==2025.2
 uritemplate>=4.2.0, <5.0 # used for drf-yasg
 urllib3==2.5.0
-uWSGI>=2.0.31,<2.1.0
+# uWSGI>=2.0.31,<2.1.0 # linux ??
 # static file serving
 whitenoise==6.11.0
 # Email
-sendgrid>=6.12.5, <7.0
-django-sendgrid-v5
+django-sendgrid-v5    #>=6.12.5, <7.0
 dj-database-url>=3.1.0,<3.2
-email-validator
+email-validator==2.3.0 # email validation check

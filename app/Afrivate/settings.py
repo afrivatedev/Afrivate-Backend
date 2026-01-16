@@ -44,8 +44,8 @@ if DEBUG:
     FRONTEND_URL = "http://localhost:3000"
 else:
     # Production environment (Actual live URLs)
-    SITE_DOMAIN = os.environ.get("SITE_DOMAIN",'https://afrivate-backend.onrender.com')
-    FRONTEND_URL = os.environ.get("FRONTEND_URL",'https://afrivate-tech.github.io')
+    SITE_DOMAIN = os.environ.get("SITE_DOMAIN",'https://afrivate-backend-production.up.railway.app')
+    FRONTEND_URL = os.environ.get("FRONTEND_URL",'https://afrivate.org')
 
 ALLOWED_HOSTS = []
 ALLOWED_HOSTS.extend(
@@ -59,6 +59,7 @@ ALLOWED_HOSTS.extend(
 # Application definition
 
 INSTALLED_APPS = [
+    "corsheaders",
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -70,9 +71,9 @@ INSTALLED_APPS = [
     'rest_framework', 
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
-    "corsheaders",
+    
     'drf_yasg',
-    # 'sendgrid_backend',
+    'sendgrid_backend',
 
     # for s3 strorage
     'storages',
@@ -85,10 +86,11 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    "corsheaders.middleware.CorsMiddleware",
+    
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -122,7 +124,8 @@ WSGI_APPLICATION = 'Afrivate.wsgi.application'
 DATABASES = {
     "default": dj_database_url.parse(
         os.environ.get("DB_URL"),
-        conn_max_age=0,
+        conn_max_age=600,
+        ssl_require=True,
     )
 }
 
@@ -249,12 +252,16 @@ SIMPLE_JWT = {
 }
 
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
+    "http://localhost:3000", # local frontend
     # "https://joshuaimmortal.github.io",
     'https://afrivate-backend.onrender.com',
-    'https://afrivate-tech.github.io'
+    'https://afrivate-tech.github.io',
+    'https://afrivate-backend-production.up.railway.app',
+    'https://afrivate.org',
+    'https://www.afrivate.org'
 ]
 
+CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_ALL_ORIGINS = False
 # CORS_ALLOW_CREDENTIALS = True # for cookies, to be enabled later if needed
 PASSWORD_RESET_TIMEOUT = 86400  # 24 hours in seconds, COULD BE REDUCED FOR BETTER SECURITY
@@ -290,6 +297,18 @@ LOGGING = {
         'handlers': ['console'],
         'level': 'INFO',
     },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'waitlist': {  
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+    },
 }
 
 BLACKLISTED_DOMAINS = {
@@ -318,3 +337,9 @@ BAD_PATTERNS = [
     r"\d{6,}",          # long digit runs
     r"(spam|fake|junk)",
 ]
+
+CSRF_TRUSTED_ORIGINS = [
+        'https://afrivate-backend-production.up.railway.app',
+        'https://afrivate.org', 'https://www.afrivate.org'
+    ]
+
