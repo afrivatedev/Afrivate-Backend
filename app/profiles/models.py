@@ -12,7 +12,14 @@ def recipe_image_file_path(instance, filename):
     ext = os.path.splitext(filename)[1]  # Get the file extension
     filename = f'{uuid.uuid4()}{ext}' # create a unique filename using uuid
 
-    return os.path.join('profile',f'profile_pics',f'user_{instance.user_id}', filename)
+    return os.path.join('profile','profile_pics',f'user_{instance.user_id}', filename)
+
+def credential_file_path(instance, filename):
+    """Generate file path for the newly added credentials while still maintaining original file ext."""
+    ext = os.path.splitext(filename)[1]  # Get the file extension
+    filename = f'{uuid.uuid4()}{ext}' # create a unique filename using uuid
+
+    return os.path.join('profile', 'credentials', f'user_{instance.user_id}', filename)
 
 
 class Profile(models.Model):
@@ -52,6 +59,6 @@ class SocialLink(models.Model):
 class Credential(models.Model):
     """model to handle both pathfinder and Enablers government issued credentials, it is attached to the user instance"""
     document_name = models.CharField(max_length=100, blank=False, null=False)
-    document = models.FileField(upload_to="profile/credentials/", blank=False, null=False)
+    document = models.FileField(upload_to=credential_file_path(), blank=False, null=False)
     is_verified = models.BooleanField(default=False)
     profile = models.ForeignKey("Profile", on_delete=models.CASCADE, blank=False, null=False, related_name="credentials")
