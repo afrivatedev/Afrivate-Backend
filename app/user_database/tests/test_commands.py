@@ -5,7 +5,7 @@ Test custom Django management commands.
 from unittest.mock import patch  # this is the decorator that would
 # enable us mock.
 
-from psycopg2 import OperationalError as psycopg2Error
+from psycopg.errors import OperationalError as psycopg2Error
 
 # importing various errors that would make us simulate
 # various connection errors when trying to connect to DB

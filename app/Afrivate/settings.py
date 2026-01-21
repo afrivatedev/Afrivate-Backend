@@ -120,14 +120,25 @@ WSGI_APPLICATION = 'Afrivate.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
-
-DATABASES = {
-    "default": dj_database_url.parse(
-        os.environ.get("DB_URL"),
-        conn_max_age=600,
-        ssl_require=True,
-    )
-}
+if DEBUG:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME':"dev_db",
+            'USER':"dev_user",
+            'PASSWORD':"DevPass123",
+            'HOST':"localhost",
+            'PORT':"5433",
+        }
+    }
+else:
+    DATABASES = {
+        "default": dj_database_url.parse(
+            os.environ.get("DB_URL"),
+            conn_max_age=600,
+            ssl_require=True,
+        )
+    }
 
 STORAGES = {
     "default": {

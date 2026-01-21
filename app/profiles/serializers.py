@@ -1,139 +1,64 @@
 """
 Serializer for the profile endpoint.
 """
+
 from rest_framework import serializers
 from django.conf import settings
 from PIL import Image
 
-from profiles.models import (Profile, EnablerProfileExtra, PathfinderProfileExtra,Credential, SocialLink)
-
-class SocialLinkSerializer(serializers.ModelSerializer):
-    """serializer for the social link model"""
-    class Meta:
-        model = SocialLink
-        fields = ("id", "platform_name", "platform_url")
-        read_only_fields = ("id",)
-
-class CredentialSerializer(serializers.ModelSerializer):
-    """serializer for the credential model"""
-    class Meta:
-        model = Credential
-        fields = ("id", "document_name", "document", "is_verified")
-        read_only_fields = ("id","is_verified")
-
-class ProfileSerializer(serializers.ModelSerializer):
-    """serializer for the enabler profile extra fields"""
-    class Meta:
-        model = Profile
-        exclude = ("user",)
-        read_only_fields = ("id","profile_pic", "created_at")
-
-class BaseProfileSerializer(serializers.ModelSerializer):
-    base_details = ProfileSerializer(source="profile", many=False, read_only=False, required=True)
-    social_links = SocialLinkSerializer(many=True, required=False)
-    # since social_links is actually not a direct field under the EnablerProfileExtra serializer, then we have to manage
-    # its inclusion in the response manually.
-
-    def _get_or_create_social_links(self, social_links_data, profile, replace=False):
-        """Create social links from nested data; optionally replace existing ones."""
-        if replace:
-            profile.social_links.all().delete()
-        for links in (social_links_data or []):
-            SocialLink.objects.get_or_create(
-                profile=profile,
-                platform_name=links.get("platform_name"),
-                platform_url=links.get("platform_url"),
-            )
-
-    def update(self, instance, validated_data):
-        base_details_data = validated_data.pop("profile", None)
-        social_links_data = validated_data.pop("social_links", None)
-        if base_details_data:
-            for attr, value in base_details_data.items():
-                setattr(instance.profile, attr, value)
-            instance.profile.save()
-        # If social_links provided, replace existing with new set
-        if social_links_data is not None:
-            self._get_or_create_social_links(social_links_data, instance.profile, replace=True)
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-        instance.save()
-        return instance
-
-    def to_representation(self, instance):
-        """Ensure social_links are serialized from the related Profile."""
-        data = super().to_representation(instance)
-        # Serialize social links from the profile relation so it's always present in responses
-        links_qs = instance.profile.social_links.all()
-        data["social_links"] = SocialLinkSerializer(links_qs, many=True).data
-        return data
+from profiles.models import (
+    EnablerProfile,
+    PathfinderProfile,
+    EnablerCredential,
+    EnablerSocialLink,
+    PathfinderSocialLink,
+    Education,
+    WorkExperience,
+    Certification,
+    Skill,
+    Language,
+)
 
 
-class EnablerProfileSerializer(BaseProfileSerializer):
-    """writes into the fields of the profile model and adds extra fields for the enabler profile"""
+class EnablerProfileSerializer(serializers.ModelSerializer):
+    """serializer for the enabler profile."""
 
     class Meta:
-        model = EnablerProfileExtra
-        exclude = ("profile",)
-        read_only_fields = ("id",)
+        model = EnablerProfile
+        exclude = ("user", "profile_pic")
+        read_only_fields = ("id","created_at", "updated_at")
 
-    def validate(self, attrs):
-        user = self.context["request"].user
-        if self.instance is None and hasattr(user, "profile"):
-            raise serializers.ValidationError("Profile already exists for this user.")
-        if user.role != "enabler":
-            raise serializers.ValidationError("Only users with Enabler role can create Enabler profiles.")
-        return attrs
+
+class PathfinderProfileSerializer(serializers.ModelSerializer):
+    """Serializer for the Pathfinder Profile"""
+
+    # Make M2M optional so clients can create profile without providing them
+    skills = serializers.PrimaryKeyRelatedField(
+        many=True, queryset=Skill.objects.all(), required=False
+    )
+    languages = serializers.PrimaryKeyRelatedField(
+        many=True, queryset=Language.objects.all(), required=False
+    )
+
+    class Meta:
+        model = PathfinderProfile
+        exclude = ("user", "profile_pic")
+        read_only_fields = ("id", "created_at", "updated_at")
 
     def create(self, validated_data):
-        user = self.context["request"].user
-        base_details_data = validated_data.pop("profile", None)  # 'profile' key comes from source on base_details
-        social_links_data = validated_data.pop("social_links", [])
-
-        if base_details_data is None:
-            raise serializers.ValidationError("Profile data is required to create Enabler profile.")
-        profile = Profile.objects.create(user=user, **base_details_data)
-        enabler_extra = EnablerProfileExtra.objects.create(profile=profile, **validated_data)
-        self._get_or_create_social_links(social_links_data, profile, replace=False)
-        return enabler_extra
+        """Handle M2M relationships on create."""
+        skills = validated_data.pop("skills", [])
+        languages = validated_data.pop("languages", [])
+        profile = PathfinderProfile.objects.create(**validated_data)
+        profile.skills.set(skills)
+        profile.languages.set(languages)
+        return profile
 
 
-class PathfinderProfileSerializer(BaseProfileSerializer):
-
-    class Meta:
-        model = PathfinderProfileExtra
-        exclude = ("profile",)
-        read_only_fields = ("id",)
-
-    def validate(self, attrs):
-        user = self.context["request"].user
-        if self.instance is None and hasattr(user, "profile"):
-            raise serializers.ValidationError("Profile already exists for this user.")
-
-        if user.role != "pathfinder":
-            raise serializers.ValidationError("Only users with Pathfinder role can create Pathfinder profiles.")
-        return attrs
-
-    def create(self, validated_data):
-        user = self.context["request"].user
-        base_details_data = validated_data.pop("profile", None)
-        social_links_data = validated_data.pop("social_links", None)
-
-        if base_details_data is None:
-            raise serializers.ValidationError("Profile data is required to create Pathfinder profile.")
-        profile = Profile.objects.create(user=user, **base_details_data)
-        pathfinder_extra = PathfinderProfileExtra.objects.create(profile=profile, **validated_data)
-        self._get_or_create_social_links(social_links_data, profile, replace=False)
-        return pathfinder_extra
-
-
-class ProfilePictureSerializer(serializers.ModelSerializer):
+class ProfilePictureSerializer(serializers.Serializer):
     """serializer for enabler profile picture update and retrieve"""
-    class Meta:
-        model = Profile
-        fields = ("id","profile_pic",)
-        read_only_fields = ("id",)
-        extra_kwargs = {"profile_pic": {"required": True}}
+
+    profile_pic = serializers.ImageField(allow_empty_file=False)
 
     def validate_profile_pic(self, file):
         """Validate image type and size using Pillow and configured limits."""
@@ -142,7 +67,9 @@ class ProfilePictureSerializer(serializers.ModelSerializer):
         max_bytes = max_mb * 1024 * 1024
         size = getattr(file, "size", None)
         if size is not None and size > max_bytes:
-            raise serializers.ValidationError(f"Image too large. Max size is {max_mb} MB.")
+            raise serializers.ValidationError(
+                f"Image too large. Max size is {max_mb} MB."
+            )
 
         # Type/format check with Pillow
         img = None
@@ -158,24 +85,35 @@ class ProfilePictureSerializer(serializers.ModelSerializer):
                 except Exception:
                     pass
 
-        allowed = getattr(settings, "PROFILE_PIC_ALLOWED_FORMATS", {"JPEG", "JPG", "PNG", "WEBP"})
+        allowed = getattr(
+            settings, "PROFILE_PIC_ALLOWED_FORMATS", {"JPEG", "JPG", "PNG", "WEBP"}
+        )
         fmt = getattr(img, "format", None) if img else None
         if fmt:
-            if fmt.upper() == "JPG": # this is a quirk with pillow, where it returns JPG even if the format is JPEG
+            if (
+                fmt.upper() == "JPG"
+            ):  # this is a quirk with pillow, where it returns JPG even if the format is JPEG
                 fmt = "JPEG"
             if allowed and fmt.upper() not in {a.upper() for a in allowed}:
                 allowed_str = ", ".join(sorted(allowed))
-                raise serializers.ValidationError(f"Unsupported image format: {fmt}. Allowed: {allowed_str}.")
+                raise serializers.ValidationError(
+                    f"Unsupported image format: {fmt}. Allowed: {allowed_str}."
+                )
 
         return file
 
     def update(self, instance, validated_data):
         """Replace profile picture and delete the old file from storage safely."""
         new_file = validated_data.get("profile_pic")
-        old_name = instance.profile_pic.name if getattr(instance, "profile_pic", None) else None
+        old_name = (
+            instance.profile_pic.name
+            if getattr(instance, "profile_pic", None)
+            else None
+        )
 
         # Perform the default update (assigns and saves the new file)
-        instance = super().update(instance, validated_data)
+        instance.profile_pic = new_file
+        instance.save()
 
         # Clean up old file if different
         if new_file and old_name and old_name != instance.profile_pic.name:
@@ -188,3 +126,38 @@ class ProfilePictureSerializer(serializers.ModelSerializer):
                 pass
 
         return instance
+
+
+class EnablerCredentialSerializer(serializers.ModelSerializer):
+    """serializer for the enabler credential model."""
+
+    class Meta:
+        model = EnablerCredential
+        exclude = ("profile",)
+        read_only_fields = ("id", "created_at", "updated_at")
+
+
+class CertificationSerializer(serializers.ModelSerializer):
+    """serializer for the certification model."""
+    class Meta:
+        model = Certification
+        exclude = ("profile",)
+        read_only_fields = ("id","is_verified", "created_at", "updated_at")
+
+
+class EnablerSocialLinkSerializer(serializers.ModelSerializer):
+    """serializer for social links for both enabler"""
+
+    class Meta:
+        model = EnablerSocialLink
+        exclude = ("profile",)
+        read_only_fields = ("id","created_at", "updated_at")
+
+
+class PathfinderSocialLinkSerializer(serializers.ModelSerializer):
+    """serializer for social links for pathfinder profiles."""
+
+    class Meta:
+        model = PathfinderSocialLink  #
+        exclude = ("profile",)
+        read_only_fields = ("id", "created_at", "updated_at")
