@@ -112,6 +112,34 @@ class PathfinderProfileAPITests(TestCase):
         self.assertEqual(resp.data.get("first_name"), payload["first_name"])
         self.assertEqual(resp.data.get("city"), payload["city"])  # flat field
 
+    def test_create_pathfinder_profile_with_skills_and_languages(self):
+        """Pathfinder profile can be created with skills and languages M2M fields (by id)."""
+        # create skill and language entries
+        from profiles.models import Skill, Language
+
+        sk = Skill.objects.create(name="Django")
+        sk2 = Skill.objects.create(name="React")
+
+        lang = Language.objects.create(name="English")
+        lang2 = Language.objects.create(name="Spanish")
+
+        payload = {
+            "first_name": "Skillful",
+            "last_name": "Polyglot",
+            "skills": [sk.id, sk2.id],
+            "languages": [lang.id, lang2.id],
+        }
+
+
+        resp = self.client.post(PATHFINDER_PROFILE_URL, payload, format="json")
+        self.assertIn(resp.status_code, (200, 201))
+
+        # serializer uses PrimaryKeyRelatedField -> expect lists of ids in response
+        self.assertIn("skills", resp.data)
+        self.assertIn("languages", resp.data)
+        self.assertEqual(resp.data.get("skills"), [sk.id, sk2.id])
+        self.assertEqual(resp.data.get("languages"), [lang.id, lang2.id])
+
     def test_get_pathfinder_profile_after_create(self):
         self.client.post(PATHFINDER_PROFILE_URL, {"first_name": "Path", "last_name": "Finder"}, format="json")
         resp = self.client.get(PATHFINDER_PROFILE_URL)
