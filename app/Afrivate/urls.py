@@ -45,6 +45,7 @@ urlpatterns = [
     path("api/waitlist/", include("waitlist.urls")),
     path("api/profile/", include("profiles.urls")),
     path("api/bookmark/", include("bookmark.urls")),
+    path("api/notify", include("notifications.urls")),
 
     path("", Authentication.views.index,),  # Added to serve index view
     
