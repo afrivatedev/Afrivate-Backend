@@ -4,7 +4,7 @@ from .views import *
 # write your ursls here
 
 urlpatterns = [
-    path("health/", health_check, name="bookmark-health-check"),
+    path("", health_check, name="bookmark-health-check"),
 
     path('opportunities/', OpportunityView.as_view(), name='opportunity-list'), # list all opportunities
     path('bookmarks/', BookmarkListCreateView.as_view(), name='bookmark-list'), # list and create bookmarks
