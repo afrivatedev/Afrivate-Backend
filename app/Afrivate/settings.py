@@ -84,6 +84,7 @@ INSTALLED_APPS = [
     'profiles',
     'waitlist',
     "bookmark",
+    'notifications',
 ]
 
 MIDDLEWARE = [
