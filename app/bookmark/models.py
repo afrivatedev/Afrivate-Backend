@@ -1,5 +1,6 @@
 from django.db import models
 import uuid
+from django.conf import settings 
 
 # Create your models here.
 class Opportunity(models.Model):
@@ -16,7 +17,7 @@ class Opportunity(models.Model):
         return self.title
     
 class Bookmark(models.Model):
-    user = models.ForeignKey('profiles.UserProfile', on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     opportunity = models.ForeignKey(Opportunity, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
 
