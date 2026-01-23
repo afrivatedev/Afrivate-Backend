@@ -83,6 +83,7 @@ INSTALLED_APPS = [
     'user_database',
     'profiles',
     'waitlist',
+    'newsletter',
     "bookmark",
     'notifications',
 ]
