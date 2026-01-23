@@ -1,6 +1,7 @@
 .idea
 .env
 notes.txt
+peace.txt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
