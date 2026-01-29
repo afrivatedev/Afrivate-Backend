@@ -346,3 +346,4 @@ CSRF_TRUSTED_ORIGINS = [
         'https://afrivate.org', 'https://www.afrivate.org'
     ]
 
+APPEND_SLASH = True
