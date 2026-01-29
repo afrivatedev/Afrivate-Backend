@@ -29,6 +29,10 @@ class RegisterView(generics.CreateAPIView):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True) # this would always run all the methods in the serializer
+
+        # verify user email validity
+
+
         user = serializer.save()
 
         return Response({
@@ -37,7 +41,9 @@ class RegisterView(generics.CreateAPIView):
             "user": {
                 "username": user.username,
                 "email": user.email,
-                "role": user.role
+                "role": user.role,
+                "first_name": user.first_name,
+                "last_name": user.last_name
             }
         }, status=status.HTTP_201_CREATED)
 
@@ -60,7 +66,9 @@ class LoginView(generics.GenericAPIView):
             "user": {
                 "username": user.username,
                 "email": user.email,
-                "role": user.role
+                "role": user.role,  
+                "first_name": user.first_name,
+                "last_name": user.last_name
             },
             "refresh": tokens['refresh_token'],
             "access": tokens['access_token']

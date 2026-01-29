@@ -83,6 +83,9 @@ INSTALLED_APPS = [
     'user_database',
     'profiles',
     'waitlist',
+    'newsletter',
+    "bookmark",
+    'notifications',
 ]
 
 MIDDLEWARE = [
@@ -343,3 +346,4 @@ CSRF_TRUSTED_ORIGINS = [
         'https://afrivate.org', 'https://www.afrivate.org'
     ]
 
+APPEND_SLASH = True
