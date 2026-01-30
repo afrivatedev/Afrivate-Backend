@@ -20,10 +20,13 @@ class ApplicationViewSet(viewsets.ModelViewSet):
     serializer_class = ApplicationSerializer
 
     def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return Application.objects.none()
+
         user = self.request.user
         if user.role == 'enabler':
             # Enablers can see the..... applications for opportunities they created
-            return Application.objects.filter(opportunity__owner=user)
+            return Application.objects.filter(opportunity__created_by=user)
             # return Application.objects.filter(user=user) # was panning to filter by user
         
         # Pathfinders see only their own applications
