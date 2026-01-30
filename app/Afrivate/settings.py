@@ -74,6 +74,7 @@ INSTALLED_APPS = [
     
     'drf_yasg',
     'sendgrid_backend',
+    'django_filters',
 
     # for s3 strorage
     'storages',
