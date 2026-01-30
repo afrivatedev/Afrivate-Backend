@@ -86,6 +86,7 @@ INSTALLED_APPS = [
     'newsletter',
     "bookmark",
     'notifications',
+    'applications',
 ]
 
 MIDDLEWARE = [
