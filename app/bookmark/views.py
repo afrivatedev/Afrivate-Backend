@@ -20,6 +20,23 @@ def health_check(request):
     logger.info("Health check requested.")
     return HttpResponse("Bookmark app is running.")
 
+def admin_opportunity_list(request):
+    """ Admin interface to list all opportunities with their bookmark counts. """
+    opportunities = Opportunity.objects.all().order_by('-posted_at')
+    data = []
+    for opp in opportunities:
+        bookmark_count = Bookmark.objects.filter(opportunity=opp).count()
+        data.append({
+            'id': opp.id,
+            'title': opp.title,
+            'opportunity_type': opp.opportunity_type,
+            'is_open': opp.is_open,
+            'posted_at': opp.posted_at,
+            'created_by': opp.created_by.username,
+            'bookmark_count': bookmark_count,
+        })
+    return JsonResponse(data, safe=False)
+
 class StandardResultsPagination(PageNumberPagination):
     page_size = 10
     page_size_query_param = 'page_size'
@@ -76,7 +93,13 @@ class BookmarkDeleteView(DestroyAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Bookmark.objects.filter(user=self.request.user)
+        if getattr(self, 'swagger_fake_view', False):
+            return Bookmark.objects.none()
+
+        user = self.request.user
+        if not user.is_authenticated:
+            return Bookmark.objects.none()
+        return Bookmark.objects.filter(user=user)
 
 # Specifically for the "My Posted Opportunities" page
 class EnablerOpportunityListView(ListCreateAPIView):
