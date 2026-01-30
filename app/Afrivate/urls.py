@@ -46,6 +46,9 @@ urlpatterns = [
     path("api/profile/", include("profiles.urls")),
     path("api/bookmark/", include("bookmark.urls")),
     path("api/notify", include("notifications.urls")),
+    # path("api/users/", include("user_database.urls")),
+    # path("api/newsletter/", include("newsletter.urls")),
+    path("api/applications/", include("applications.urls")),
 
     path("", Authentication.views.index,),  # Added to serve index view
     
