@@ -10,7 +10,7 @@ class Opportunity(models.Model):
     # location = models.CharField(max_length=255, null=True, blank=True)  # e.g Remote, On-site
     posted_at = models.DateTimeField(auto_now_add=True)
     is_open = models.BooleanField(default=True)
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)  # Optional: Track who created the oppurtunity e.g Enabler
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='created_opportunities', null=True, blank=True)  # Optional: Track who created the oppurtunity e.g Enabler
 
     def __str__(self):
         return self.title

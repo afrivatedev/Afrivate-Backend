@@ -9,21 +9,23 @@ from django.conf import settings
 
 import random
 
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail, Email, To # , Content
+
+# Generate OTP 
 def send_otp(email):
     """Generate and send OTP to the user's email"""
     otp = random.randint(100000, 999999)
     try: 
         user = CustomUser.objects.get(email=email)
-        user.reset_password_otp = otp
-        user.reset_password_otp_expiry = timezone.now() + timedelta(minutes=10)  # OTP valid for 10 minutes
-        user.reset_password_otp_used = False
+        
         user.save()
         return otp
     except CustomUser.DoesNotExist:
         logging.error(f"User with email {email} does not exist.")
         return None
-
-
+    
+# send email then receive otp input and verify 
 def sendotp_via_email(email):
     """Send OTP to the specified email address""" 
 
@@ -34,7 +36,7 @@ def sendotp_via_email(email):
     
     try:
         user = CustomUser.objects.get(email=email) # calling this in the send_otp function
-        subject = 'Password Reset Request'
+        subject = 'OTP for email verification - Afrivate'
         message = f"""
             Dear {user.username},
             You requested a password reset. 
@@ -45,14 +47,21 @@ def sendotp_via_email(email):
             This otp will expire in 10 minutes. 
             """
     
-        send_mail(
-                subject=subject,
-                message=message,
-                from_email= settings.DEFAULT_FROM_EMAIL, 
-                recipient_list=[email],
-                fail_silently=False
-            )
-        return True
+        message = Mail(
+        from_email=Email(settings.DEFAULT_FROM_EMAIL, 'Afrivate Tech'),
+        to_emails=To(email),
+        subject=subject)
+
+        sg = SendGridAPIClient(settings.SENDGRID_API_KEY)
+        response = sg.send(message)
+        logging.info(f"SendGrid response status for {email}: {response.status_code}")
+
+        if response.status_code == 202:
+            logging.info(f"otp email sent successfully to {email}")
+            return True
+        else:
+            logging.warning(f"SendGrid returned status {response.status_code} for {email}")
+            return False
     
     except CustomUser.DoesNotExist:
         logging.error(f"User with email {email} does not exist.")
@@ -62,4 +71,26 @@ def sendotp_via_email(email):
         logging.error(f"Error sending email to {email}: {e}")
         return False
 
+# Send a confirmation email once verification is there
+def send_welcome_email(email, name):
+    subject = 'Welcome to Afrivate!'
+    
+    try:
+        message = Mail(
+        from_email=Email(settings.DEFAULT_FROM_EMAIL, 'Afrivate Tech'),
+        to_emails=To(email),
+        subject=subject)
 
+        sg = SendGridAPIClient(settings.SENDGRID_API_KEY)
+        response = sg.send(message)
+        logging.info(f"SendGrid response status for {email}: {response.status_code}")
+
+        if response.status_code == 202:
+            logging.info(f"Verification email sent successfully to {email}")
+            return True
+        else:
+            logging.warning(f"SendGrid returned status {response.status_code} for {email}")
+            return False
+    except Exception as e:
+        print(f"SendGrid Error for {email}: {str(e)}")
+        return False
