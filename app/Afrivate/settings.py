@@ -74,6 +74,7 @@ INSTALLED_APPS = [
     
     'drf_yasg',
     'sendgrid_backend',
+    'django_filters',
 
     # for s3 strorage
     'storages',
@@ -86,6 +87,7 @@ INSTALLED_APPS = [
     'newsletter',
     "bookmark",
     'notifications',
+    'applications',
 ]
 
 MIDDLEWARE = [
