@@ -79,7 +79,7 @@ INSTALLED_APPS = [
     # for s3 strorage
     'storages',
 
-    #django apps
+    # django apps
     'Authentication',
     'user_database',
     'profiles',
@@ -88,6 +88,9 @@ INSTALLED_APPS = [
     "bookmark",
     'notifications',
     'applications',
+
+    # signals
+    # 'profiles.apps.ProfilesConfig'
 ]
 
 MIDDLEWARE = [
@@ -130,7 +133,7 @@ DATABASES = {
     "default": dj_database_url.parse(
         os.environ.get("DB_URL"),
         conn_max_age=600,
-        ssl_require=True,
+        ssl_require= not True, # set back to true in production
     )
 }
 
@@ -248,7 +251,7 @@ SWAGGER_SETTINGS = {
 }
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15), # to be changed to hours in production
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=24), # to be changed to hours in production
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7), # to be changed to weeks in production
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
@@ -259,7 +262,7 @@ SIMPLE_JWT = {
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000", # local frontend
     # "https://joshuaimmortal.github.io",
-    'https://afrivate-backend.onrender.com',
+    # 'https://afrivate-backend.onrender.com',
     'https://afrivate-tech.github.io',
     'https://afrivate-backend-production.up.railway.app',
     'https://afrivate.org',
@@ -305,8 +308,8 @@ LOGGING = {
     'loggers': {
         'django': {
             'handlers': ['console'],
-            'level': 'INFO',
-            'propagate': False,
+            'level': 'INFO', # INFO, ERROR
+            'propagate': True, # change to False to prevent duplicate logs if root logger is also logging
         },
         'waitlist': {  
             'handlers': ['console'],

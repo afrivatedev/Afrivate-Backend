@@ -92,8 +92,9 @@ class EnablerProfileSerializer(BaseProfileSerializer):
 
         if base_details_data is None:
             raise serializers.ValidationError("Profile data is required to create Enabler profile.")
-        profile = Profile.objects.create(user=user, **base_details_data)
-        enabler_extra = EnablerProfileExtra.objects.create(profile=profile, **validated_data)
+        # profile = Profile.objects.create(user=user, **base_details_data)
+        profile, _ = Profile.objects.update_or_create(user=user, defaults=base_details_data)
+        enabler_extra = EnablerProfileExtra.objects.update_or_create(profile=profile, **validated_data)
         self._get_or_create_social_links(social_links_data, profile, replace=False)
         return enabler_extra
 
@@ -121,8 +122,9 @@ class PathfinderProfileSerializer(BaseProfileSerializer):
 
         if base_details_data is None:
             raise serializers.ValidationError("Profile data is required to create Pathfinder profile.")
-        profile = Profile.objects.create(user=user, **base_details_data)
-        pathfinder_extra = PathfinderProfileExtra.objects.create(profile=profile, **validated_data)
+        # profile = Profile.objects.create(user=user, **base_details_data)
+        profile, _ = Profile.objects.update_or_create(user=user, defaults=base_details_data)
+        pathfinder_extra = PathfinderProfileExtra.objects.update_or_create(profile=profile, **validated_data)
         self._get_or_create_social_links(social_links_data, profile, replace=False)
         return pathfinder_extra
 
