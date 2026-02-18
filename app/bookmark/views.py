@@ -48,7 +48,7 @@ class OpportunityView(ListCreateAPIView):
     serializer_class = OpportunitySerializer 
     pagination_class = StandardResultsPagination
 
-    permission_classes = [IsEnablerOrReadOnly]
+    permission_classes = [IsEnablerOrReadOnly, IsAuthenticated] # Only enablers can create
     
     # Enable Search and Category Filtering
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
@@ -62,7 +62,7 @@ class OpportunityView(ListCreateAPIView):
 # save opportunity (bookmark) /api/bookmarks/ POST {200}
 class BookmarkListCreateView(ListCreateAPIView):
     """"""
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated] # Only authenticated users can bookmark
     serializer_class = BookmarkSerializer
 
     def get_queryset(self):
