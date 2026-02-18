@@ -59,7 +59,11 @@ class EnablerProfileAPIView(BaseProfileView):
     def get_object(self):
         """retrieve the profile instance for the logged-in user profile."""
         user = self.request.user
-        obj = get_object_or_404(EnablerProfileExtra, profile=user.profile)
+        profile = user.profile 
+    
+        # Use get_or_create so GET and PUT always find 'something' to work with
+        obj, _ = EnablerProfileExtra.objects.get_or_create(profile=profile)
+        # obj = get_object_or_404(EnablerProfileExtra, profile=user.profile) # 
         return obj
 
 class PathfinderProfileAPIView(BaseProfileView):
@@ -72,7 +76,9 @@ class PathfinderProfileAPIView(BaseProfileView):
 
     def get_object(self):
         user = self.request.user
-        return get_object_or_404(PathfinderProfileExtra, profile=user.profile)
+        profile = user.profile
+        obj, _ = PathfinderProfileExtra.objects.get_or_create(profile=profile)
+        return obj # get_object_or_404(PathfinderProfileExtra, profile=user.profile)
 
 class ProfilePictureAPIView(mixins.RetrieveModelMixin,
                             mixins.UpdateModelMixin,

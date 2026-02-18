@@ -26,7 +26,7 @@ class NotificationViewSet(viewsets.ModelViewSet):
                 current_user_read=Exists(
                     Notification.read_by.through.objects.filter(
                         notification_id=OuterRef('pk'),
-                        user_id=user.id
+                        user_id=user.id # customuser_ID=user_ID
                     )
                 )
             ).order_by('-created_at')
