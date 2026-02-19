@@ -88,6 +88,7 @@ INSTALLED_APPS = [
     "bookmark",
     'notifications',
     'applications',
+    'opportunities',
 
     # signals
     # 'profiles.apps.ProfilesConfig'

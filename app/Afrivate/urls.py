@@ -54,6 +54,7 @@ urlpatterns = [
     path("api/notify", include("notifications.urls")),
     # path("api/users/", include("user_database.urls")),
     # path("api/newsletter/", include("newsletter.urls")),
+    path("api/opportunities/", include("opportunities.urls")),
     path("api/applications/", include("applications.urls")),
 ]
 
