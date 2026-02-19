@@ -6,11 +6,7 @@ from .views import *
 urlpatterns = [
     path("", health_check, name="bookmark-health-check"),
 
-    path('opportunities/', OpportunityView.as_view(), name='opportunity-list'), # list all opportunities
     path('bookmarks/', BookmarkListCreateView.as_view(), name='bookmark-list'), # list and create bookmarks
     path('bookmarks/<int:pk>/delete/', BookmarkDeleteView.as_view(), name='bookmark-delete'), # delete bookmark
     path('opportunities/saved/', UserBookmarkListView.as_view(), name='user-bookmarks'), # list user's bookmarked opportunities
-    path('opportunities/mine/', EnablerOpportunityListView.as_view(), name='my-opportunities'), # list opportunities created by the logged-in enabler
-    path('opportunities/<int:pk>/', OpportunityDetailView.as_view(), name='opportunity-detail'), # retrieve, update, delete opportunity
-
 ]
