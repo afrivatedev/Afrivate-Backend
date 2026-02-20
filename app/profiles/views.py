@@ -60,7 +60,11 @@ class EnablerProfileAPIView(BaseProfileView):
         """retrieve the profile instance for the logged-in user profile."""
         user = self.request.user
         profile = user.profile 
-    
+
+        if user.role != "enabler":
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Only users with Enabler role can access Enabler profiles.")
+        
         # Use get_or_create so GET and PUT always find 'something' to work with
         obj, _ = EnablerProfileExtra.objects.get_or_create(profile=profile)
         # obj = get_object_or_404(EnablerProfileExtra, profile=user.profile) # 
@@ -77,6 +81,11 @@ class PathfinderProfileAPIView(BaseProfileView):
     def get_object(self):
         user = self.request.user
         profile = user.profile
+
+        if user.role != "pathfinder": 
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Only users with Pathfinder role can access Pathfinder profiles.")
+        
         obj, _ = PathfinderProfileExtra.objects.get_or_create(profile=profile)
         return obj # get_object_or_404(PathfinderProfileExtra, profile=user.profile)
 
@@ -102,7 +111,19 @@ class ProfilePictureAPIView(mixins.RetrieveModelMixin,
 
 class CredentialViewSet(viewsets.ModelViewSet):
     """a model viewset to handle CRUD operations on the credential model"""
-    pass
+    serializer_class = CredentialSerializer
+    permission_classes = (IsAuthenticated,)
+    authentication_classes = (JWTAuthentication,)
+
+    def get_queryset(self):
+        """return credentials for the logged-in user"""
+        user = self.request.user
+        return user.profile.credentials.all()
+    
+    def perform_create(self, serializer):
+        """associate the credential with the logged-in user's profile"""
+        user = self.request.user
+        serializer.save(profile=user.profile)
 
 class SocialLinkViewSet(viewsets.ModelViewSet):
     """a model viewset to handle CRUD operations on the social link model"""

@@ -5,7 +5,7 @@ from rest_framework import serializers
 from django.conf import settings
 from PIL import Image
 
-from profiles.models import (Profile, EnablerProfileExtra, PathfinderProfileExtra,Credential, SocialLink)
+from profiles.models import *
 
 class SocialLinkSerializer(serializers.ModelSerializer):
     """serializer for the social link model"""
@@ -28,6 +28,24 @@ class ProfileSerializer(serializers.ModelSerializer):
         exclude = ("user",)
         read_only_fields = ("id","profile_pic", "created_at")
 
+class SkillSerializer(serializers.ModelSerializer):
+    """serializer for the pathfinder skill model"""
+    class Meta:
+        model = PathfinderSkill
+        fields = ("name",)
+
+class EducationSerializer(serializers.ModelSerializer):
+    """serializer for the pathfinder education model"""
+    class Meta:
+        model = PathfinderEducation
+        fields = ("name",)
+
+class CertificationSerializer(serializers.ModelSerializer):
+    """serializer for the pathfinder certification model"""
+    class Meta:
+        model = PathfinderCertification
+        fields = ("name",)
+
 class BaseProfileSerializer(serializers.ModelSerializer):
     base_details = ProfileSerializer(source="profile", many=False, read_only=False, required=True)
     social_links = SocialLinkSerializer(many=True, required=False)
@@ -48,15 +66,21 @@ class BaseProfileSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         base_details_data = validated_data.pop("profile", None)
         social_links_data = validated_data.pop("social_links", None)
+
         if base_details_data:
+            profile_instance = instance.profile
+
             for attr, value in base_details_data.items():
-                setattr(instance.profile, attr, value)
-            instance.profile.save()
+                setattr(profile_instance, attr, value)
+            profile_instance.save()
+
         # If social_links provided, replace existing with new set
         if social_links_data is not None:
             self._get_or_create_social_links(social_links_data, instance.profile, replace=True)
+
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
+
         instance.save()
         return instance
 
@@ -94,12 +118,15 @@ class EnablerProfileSerializer(BaseProfileSerializer):
             raise serializers.ValidationError("Profile data is required to create Enabler profile.")
         # profile = Profile.objects.create(user=user, **base_details_data)
         profile, _ = Profile.objects.update_or_create(user=user, defaults=base_details_data)
-        enabler_extra = EnablerProfileExtra.objects.update_or_create(profile=profile, **validated_data)
+        enabler_extra, _ = EnablerProfileExtra.objects.update_or_create(profile=profile, defaults=validated_data)
         self._get_or_create_social_links(social_links_data, profile, replace=False)
         return enabler_extra
 
 
 class PathfinderProfileSerializer(BaseProfileSerializer):
+    skills = SkillSerializer(many=True, required=False)
+    educations = EducationSerializer(many=True, required=False)
+    certifications = CertificationSerializer(many=True, required=False)
 
     class Meta:
         model = PathfinderProfileExtra
@@ -119,16 +146,54 @@ class PathfinderProfileSerializer(BaseProfileSerializer):
         user = self.context["request"].user
         base_details_data = validated_data.pop("profile", None)
         social_links_data = validated_data.pop("social_links", None)
+        skills_data = validated_data.pop("skills", [])
+        educations_data = validated_data.pop("educations", [])
+        certifications_data = validated_data.pop("certifications", [])
 
         if base_details_data is None:
             raise serializers.ValidationError("Profile data is required to create Pathfinder profile.")
+        
         # profile = Profile.objects.create(user=user, **base_details_data)
         profile, _ = Profile.objects.update_or_create(user=user, defaults=base_details_data)
-        pathfinder_extra = PathfinderProfileExtra.objects.update_or_create(profile=profile, **validated_data)
+        pathfinder_extra, _ = PathfinderProfileExtra.objects.update_or_create(profile=profile, **validated_data)
+        
         self._get_or_create_social_links(social_links_data, profile, replace=False)
+        
+        for skill in skills_data:
+            PathfinderSkill.objects.create(pathfinder=pathfinder_extra, **skill)
+
+        for education in educations_data:
+            PathfinderEducation.objects.create(pathfinder=pathfinder_extra, **education)
+
+        for certification in certifications_data:
+            PathfinderCertification.objects.create(pathfinder=pathfinder_extra, **certification)
+
         return pathfinder_extra
 
+    def update(self, instance, validated_data):
+        skills_data = validated_data.pop("skills", None)
+        educations_data = validated_data.pop("educations", None)
+        certifications_data = validated_data.pop("certifications", None)
 
+        instance = super().update(instance, validated_data)
+
+        if skills_data is not None:
+            instance.pathfinder_skills.all().delete()
+            for skill in skills_data:
+                PathfinderSkill.objects.create(pathfinder=instance, **skill)
+
+        if educations_data is not None:
+            instance.pathfinder_education.all().delete()
+            for education in educations_data:
+                PathfinderEducation.objects.create(pathfinder=instance, **education)
+
+        if certifications_data is not None:
+            instance.pathfinder_certifications.all().delete()
+            for cert in certifications_data:
+                PathfinderCertification.objects.create(pathfinder=instance, **cert)
+
+        return instance
+    
 class ProfilePictureSerializer(serializers.ModelSerializer):
     """serializer for enabler profile picture update and retrieve"""
     class Meta:
