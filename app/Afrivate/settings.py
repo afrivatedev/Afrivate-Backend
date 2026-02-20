@@ -66,6 +66,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.sites',
 
     #dependencies
     'rest_framework', 
@@ -92,6 +93,12 @@ INSTALLED_APPS = [
 
     # signals
     # 'profiles.apps.ProfilesConfig'
+
+    # allauth for social login
+#     'allauth',
+#     'allauth.account',
+#     'allauth.socialaccount',
+#     'allauth.socialaccount.providers.google',
 ]
 
 MIDDLEWARE = [
@@ -224,6 +231,7 @@ AUTH_USER_MODEL = 'user_database.CustomUser'
 AUTHENTICATION_BACKENDS = [
     'Authentication.backends.CustomAuthenticationBackend',
     'django.contrib.auth.backends.ModelBackend',
+    'allauth.account.auth_backends.AuthenticationBackend', # for django allauth
 ]
 
 # Email configuration
@@ -353,3 +361,4 @@ CSRF_TRUSTED_ORIGINS = [
     ]
 
 APPEND_SLASH = True
+SITE_ID = 1 # required for django allauth, can be used for multi-tenancy in the future if needed

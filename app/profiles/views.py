@@ -59,7 +59,7 @@ class EnablerProfileAPIView(BaseProfileView):
     def get_object(self):
         """retrieve the profile instance for the logged-in user profile."""
         user = self.request.user
-        profile = user.profile 
+        profile, created = Profile.objects.get_or_create(user=user) # ensures a profile instance always exists for the user
 
         if user.role != "enabler":
             from rest_framework.exceptions import PermissionDenied
@@ -80,7 +80,7 @@ class PathfinderProfileAPIView(BaseProfileView):
 
     def get_object(self):
         user = self.request.user
-        profile = user.profile
+        profile, created = Profile.objects.get_or_create(user=user) # ensures a profile instance always exists for the user
 
         if user.role != "pathfinder": 
             from rest_framework.exceptions import PermissionDenied
