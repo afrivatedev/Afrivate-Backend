@@ -10,12 +10,26 @@ def create_user_profile(sender, instance, created, **kwargs):
     if created:
         Profile.objects.create(
             user=instance,
+            contact_email=instance.email,
             address="",
-            city="",
+            # city="",
             state="",
             country="",
-            contact_email=instance.email
         )
+
+        if instance.role == "enabler":
+            from .models import EnablerProfileExtra
+            EnablerProfileExtra.objects.create(
+                profile=instance.profile,
+                name=instance.username,
+            )
+        elif instance.role == "pathfinder":
+            from .models import PathfinderProfileExtra
+            PathfinderProfileExtra.objects.create(
+                profile=instance.profile,
+                first_name=instance.first_name or "",  
+                last_name=instance.last_name or ""
+            )
 
 @receiver(post_save, sender=settings.AUTH_USER_MODEL)
 def save_user_profile(sender, instance, **kwargs):

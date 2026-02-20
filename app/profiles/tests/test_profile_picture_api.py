@@ -39,7 +39,7 @@ class ProfilePictureAPITests(TestCase):
         enabler_payload = {
             "base_details": {
                 "address": "123 St",
-                "city": "City",
+                # "city": "City",
                 "state": "State",
                 "country": "Country",
                 "contact_email": "user@example.com",
@@ -64,7 +64,7 @@ class ProfilePictureAPITests(TestCase):
         enabler_payload = {
             "base_details": {
                 "address": "123 St",
-                "city": "City",
+                # "city": "City",
                 "state": "State",
                 "country": "Country",
                 "contact_email": "user@example.com",
@@ -90,7 +90,7 @@ class ProfilePictureAPITests(TestCase):
         enabler_payload = {
             "base_details": {
                 "address": "123 St",
-                "city": "City",
+                # "city": "City",
                 "state": "State",
                 "country": "Country",
                 "contact_email": "user@example.com",
@@ -111,7 +111,7 @@ class ProfilePictureAPITests(TestCase):
         enabler_payload = {
             "base_details": {
                 "address": "123 St",
-                "city": "City",
+                # "city": "City",
                 "state": "State",
                 "country": "Country",
                 "contact_email": "user@example.com",

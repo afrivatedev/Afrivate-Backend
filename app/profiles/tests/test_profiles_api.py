@@ -28,7 +28,7 @@ def create_user(username="testuser",
 ENABLER_PAYLOAD = {
             "base_details":{
                          "address": "456 Road",
-                         "city": "Accra",
+                        #  "city": "Accra",
                          "state": "Greater Accra",
                          "country": "Ghana",
                          "contact_email": "enabler@example.com",
