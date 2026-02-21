@@ -15,6 +15,8 @@ urlpatterns = [
 
     # profile picture end point.
     path('profile/picture/', ProfilePictureAPIView.as_view(), name="profile-pic"),
+    path('health/', health_check, name='health-check'),
+    path('credentials/', CredentialViewSet.as_view({'get': 'list', 'post': 'create'}), name='credentials'),
 
     # path('', include(router.urls)),  
 ]
