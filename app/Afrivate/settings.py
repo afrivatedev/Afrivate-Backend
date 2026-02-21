@@ -231,7 +231,7 @@ AUTH_USER_MODEL = 'user_database.CustomUser'
 AUTHENTICATION_BACKENDS = [
     'Authentication.backends.CustomAuthenticationBackend',
     'django.contrib.auth.backends.ModelBackend',
-    'allauth.account.auth_backends.AuthenticationBackend', # for django allauth
+    # 'allauth.account.auth_backends.AuthenticationBackend', # for django allauth
 ]
 
 # Email configuration

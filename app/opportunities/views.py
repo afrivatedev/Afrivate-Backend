@@ -76,3 +76,10 @@ class OpportunityDetailView(RetrieveUpdateDestroyAPIView):
     permission_classes = [IsOwnerOrReadOnly]
 
 # admin interface with all opportunities and their bookmark counts
+
+# For the Enabler (The "Employer" side)
+# ActionOperationLogic
+# CreatePost OpportunityEnabler fills a form to add a new record to the Opportunities table.
+# ReadView ApplicantsEnabler views all Applications linked to their specific opportunity_id.
+# UpdateEdit PostingEnabler modifies the description or changes the application status (e.g., "Accepted").
+# DeleteRemove PostingEnabler deletes an opportunity (usually "soft delete" or archiving is better).

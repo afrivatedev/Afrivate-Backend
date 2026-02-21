@@ -49,3 +49,11 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         application.save()
         
         return Response({'message': f'Application marked as {new_status}'})
+    
+# For the Pathfinder (The "Applicant" side)
+# ActionOperationLogic
+
+# CreateApplyPathfinder submits a form that creates a record in the Applications table.
+# ReadBrowse FeedPathfinder queries the Opportunities table to see what’s available.
+# UpdateEdit ApplicationPathfinder can update their cover letter if the status is still "Pending."
+# DeleteWithdrawPathfinder deletes their record from the Applications table.
