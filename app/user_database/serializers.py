@@ -1,4 +1,5 @@
 from rest_framework import serializers, status
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from .models import CustomUser, EmailVerification
 
@@ -230,3 +231,15 @@ class VerifyEmailSerializer(serializers.Serializer):
         except Exception as e:
             logging.error(f"Error during verification process: {str(e)}")
             raise e
+
+
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+    
+        token["role"] = user.role
+        token["email"] = user.email
+
+        return token

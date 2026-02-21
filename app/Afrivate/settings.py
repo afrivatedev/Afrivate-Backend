@@ -36,7 +36,7 @@ and set it as an environment variable.
 '''
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = bool(int(os.environ.get("DEBUG","0")))  # set to 0 in production
+DEBUG = bool(int(os.environ.get("DEBUG","0"))) # set to 0 in production
 
 if DEBUG:
     # Local deve
@@ -95,10 +95,15 @@ INSTALLED_APPS = [
     # 'profiles.apps.ProfilesConfig'
 
     # allauth for social login
-#     'allauth',
-#     'allauth.account',
-#     'allauth.socialaccount',
-#     'allauth.socialaccount.providers.google',
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.google',
+
+    # dj-rest-auth for rest endpoints for authentication, registration, password reset, etc.
+    'dj_rest_auth',
+    'dj_rest_auth.registration',
+    'rest_framework.authtoken',  # for token authentication, required by dj-rest-auth
 ]
 
 MIDDLEWARE = [
@@ -112,6 +117,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'allauth.account.middleware.AccountMiddleware',  # for django allauth
 ]
 
 ROOT_URLCONF = 'Afrivate.urls'
@@ -162,12 +168,10 @@ STORAGES = {
 MAX_PROFILE_PIC_MB = 5
 PROFILE_PIC_ALLOWED_FORMATS = {"JPEG", "JPG", "PNG", "WEBP"}
 
-
+# S3 endpoint
 AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")
 AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
 AWS_STORAGE_BUCKET_NAME = os.environ.get("AWS_STORAGE_BUCKET_NAME")
-
-# S3 endpoint
 AWS_S3_ENDPOINT_URL = os.environ.get("AWS_S3_ENDPOINT_URL")   
 AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME")
 
@@ -175,8 +179,6 @@ AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME")
 # Optional, recommended
 AWS_S3_FILE_OVERWRITE = False
 AWS_DEFAULT_ACL = None
-
-
 
 
 # Password validation
@@ -231,7 +233,7 @@ AUTH_USER_MODEL = 'user_database.CustomUser'
 AUTHENTICATION_BACKENDS = [
     'Authentication.backends.CustomAuthenticationBackend',
     'django.contrib.auth.backends.ModelBackend',
-    # 'allauth.account.auth_backends.AuthenticationBackend', # for django allauth
+    'allauth.account.auth_backends.AuthenticationBackend', # for django allauth
 ]
 
 # Email configuration
@@ -261,22 +263,30 @@ SWAGGER_SETTINGS = {
 }
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(hours=24), # to be changed to hours in production
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=7), # to be changed to weeks in production
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=1), # to be changed to hours in production
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1), # to be changed to weeks in production
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
     'AUTH_HEADER_TYPES': ('Bearer',),
     'UPDATE_LAST_LOGIN': True,
+    'TOKEN_OBTAIN_SERIALIZER': 'Authentication.serializers.CustomTokenObtainPairSerializer',
 }
+
+# RAW_ORIGINS = os.environ.get("TRUSTED_ORIGINS", "http://localhost:3000").split(",")
+# CORS_ALLOWED_ORIGINS = RAW_ORIGINS
+# CSRF_TRUSTED_ORIGINS = RAW_ORIGINS
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000", # local frontend
-    # "https://joshuaimmortal.github.io",
-    # 'https://afrivate-backend.onrender.com',
     'https://afrivate-tech.github.io',
     'https://afrivate-backend-production.up.railway.app',
     'https://afrivate.org',
     'https://www.afrivate.org'
+]
+
+CSRF_TRUSTED_ORIGINS = [
+        'https://afrivate-backend-production.up.railway.app',
+        'https://afrivate.org', 'https://www.afrivate.org'
 ]
 
 CORS_ALLOW_CREDENTIALS = True
@@ -284,17 +294,11 @@ CORS_ALLOW_ALL_ORIGINS = False
 # CORS_ALLOW_CREDENTIALS = True # for cookies, to be enabled later if needed
 PASSWORD_RESET_TIMEOUT = 86400  # 24 hours in seconds, COULD BE REDUCED FOR BETTER SECURITY
 
-'''
+
 SECURE_SSL_REDIRECT = True
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
-SECURE_BROWSER_XSS_FILTER = True
-SECURE_CONTENT_TYPE_NOSNIFF = True
-X_FRAME_OPTIONS = 'DENY'
-SECURE_HSTS_SECONDS = 31536000
-SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-SECURE_HSTS_PRELOAD = True
-'''
+
 
 LOGGING = {
     'version': 1,
@@ -356,10 +360,17 @@ BAD_PATTERNS = [
     r"(spam|fake|junk)",
 ]
 
-CSRF_TRUSTED_ORIGINS = [
-        'https://afrivate-backend-production.up.railway.app',
-        'https://afrivate.org', 'https://www.afrivate.org'
-    ]
 
 APPEND_SLASH = True
-SITE_ID = 1 # required for django allauth, can be used for multi-tenancy in the future if needed
+
+# django allauth settings for social login, currently only google but can be extended to others in the future
+SITE_ID = 1 # required for django allauth
+# ACCOUNT_EMAIL_REQUIRED = True
+# ACCOUNT_USERNAME_REQUIRED = False
+# ACCOUNT_AUTHENTICATION_METHOD = "email"
+ACCOUNT_EMAIL_VERIFICATION = "none"
+SOCIALACCOUNT_ADAPTER = 'Authentication.adapter.CustomSocialAccountAdapter'
+
+ACCOUNT_LOGIN_METHODS = {'email'}  
+ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*']
+ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*']

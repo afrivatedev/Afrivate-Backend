@@ -137,9 +137,14 @@ class CredentialViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         """associate the credential with the logged-in user's profile"""
         user = self.request.user
+        logger.info("Creating credential for user: %s", user.username)
         serializer.save(profile=user.profile)
 
 class SocialLinkViewSet(viewsets.ModelViewSet):
     """a model viewset to handle CRUD operations on the social link model"""
 
-    pass
+    serializer_class = SocialLinkSerializer
+    permission_classes = (IsAuthenticated,)
+    authentication_classes = (JWTAuthentication,)
+
+  

@@ -7,12 +7,15 @@ import uuid
 from django.conf import settings
 from django.db import models
 
+PROFILE_UPLOAD_PATH = 'profile' 
+
+# write your models here.
 def recipe_image_file_path(instance, filename):
     """Generate file path for the new profile pic while still maintaining the original file extension"""
-    ext = os.path.splitext(filename)[1]  # Get the file extension
+    ext = os.path.splitext(filename)[1] # Get the file extension
     filename = f'{uuid.uuid4()}{ext}' # create a unique filename using uuid
-
-    return os.path.join('profile','profile_pics',f'user_{instance.user_id}', filename)
+    
+    return os.path.join(PROFILE_UPLOAD_PATH, 'profile_pics', f'user_{instance.user_id}',filename)
 
 def credential_file_path(instance, filename):
     """Generate file path for the newly added credentials while still maintaining original file ext."""
