@@ -245,7 +245,8 @@ SENDGRID_SANDBOX_MODE_IN_DEBUG = False
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-    )
+    ),
+    'EXECEPTION_HANDLER': 'profiles.utils.custom_exception_handler',
 }
 
 SWAGGER_SETTINGS = {
