@@ -19,11 +19,12 @@ def sync_user_profile_and_role(sender, instance, created, **kwargs):
         # 2. Create Base Profile
         profile, p_created = Profile.objects.get_or_create(
             user=instance,
-            address="",
-            # city="",
-            state="",
+            
             defaults={
                 "contact_email": instance.email,
+                "address": "",
+                # city="",
+                "state": "",
                 "country": "" # Avoid null errors in prod
             }
         )
