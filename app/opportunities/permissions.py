@@ -17,7 +17,10 @@ class IsOwnerOrReadOnly(BasePermission):
             return True
 
         # Write permissions are only allowed to the creator of the opportunity
-        return obj.created_by == request.user
+        # For Opportunities, the field is 'created_by'. 
+        # For Applications, the field is 'user'.
+        owner_field = getattr(obj, 'created_by', getattr(obj, 'user', None))
+        return owner_field == request.user
 
 
 class IsEnablerOrReadOnly(BasePermission):
@@ -25,7 +28,6 @@ class IsEnablerOrReadOnly(BasePermission):
     - Anyone can READ
     - Only authenticated Enablers can CREATE
     """
-
     def has_permission(self, request, view):
 
         # Allow GET, HEAD, OPTIONS
@@ -38,3 +40,8 @@ class IsEnablerOrReadOnly(BasePermission):
 
         # Must be enabler
         return getattr(request.user, "role", None) == "enabler"
+    
+class IsPathfinder(BasePermission):
+    """Strictly for Pathfinders to apply for jobs"""
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and getattr(request.user, "role", None) == "pathfinder"

@@ -16,7 +16,7 @@ class CustomUser(AbstractUser):
         ('pathfinder', 'Pathfinder'),
     )
     email = models.EmailField(unique=True, validators=[EmailValidator()], null=False, blank=False, db_index=True)
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES, blank=False)
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, blank=False, default='pathfinder')
     # bio = models.TextField(blank=True, null=True)
     
     # verifying email

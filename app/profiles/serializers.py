@@ -4,6 +4,8 @@ Serializer for the profile endpoint.
 from rest_framework import serializers
 from django.conf import settings
 from PIL import Image
+from django.core.exceptions import ValidationError
+from django.db import transaction
 
 from profiles.models import *
 
@@ -51,7 +53,7 @@ class BaseProfileSerializer(serializers.ModelSerializer):
     social_links = SocialLinkSerializer(many=True, required=False)
     # since social_links is actually not a direct field under the EnablerProfileExtra serializer, then we have to manage
     # its inclusion in the response manually.
-
+    
     def _get_or_create_social_links(self, social_links_data, profile, replace=False):
         """Create social links from nested data; optionally replace existing ones."""
         if replace:
@@ -63,6 +65,7 @@ class BaseProfileSerializer(serializers.ModelSerializer):
                 platform_url=links.get("platform_url"),
             )
 
+    @transaction.atomic
     def update(self, instance, validated_data):
         base_details_data = validated_data.pop("profile", None)
         social_links_data = validated_data.pop("social_links", None)
@@ -122,6 +125,10 @@ class EnablerProfileSerializer(BaseProfileSerializer):
         self._get_or_create_social_links(social_links_data, profile, replace=False)
         return enabler_extra
 
+    def clean(self):
+        if self.profile.user.role != 'enabler':
+            raise ValidationError("User role must be 'enabler' to have this profile type.")
+
 
 class PathfinderProfileSerializer(BaseProfileSerializer):
     skills = SkillSerializer(many=True, required=False)
@@ -142,6 +149,7 @@ class PathfinderProfileSerializer(BaseProfileSerializer):
             raise serializers.ValidationError("Only users with Pathfinder role can create Pathfinder profiles.")
         return attrs
 
+    @transaction.atomic
     def create(self, validated_data):
         user = self.context["request"].user
         base_details_data = validated_data.pop("profile", None)
@@ -155,18 +163,19 @@ class PathfinderProfileSerializer(BaseProfileSerializer):
         
         # profile = Profile.objects.create(user=user, **base_details_data)
         profile, _ = Profile.objects.update_or_create(user=user, defaults=base_details_data)
-        pathfinder_extra, _ = PathfinderProfileExtra.objects.update_or_create(profile=profile, **validated_data)
-        
+        # pathfinder_extra, _ = PathfinderProfileExtra.objects.update_or_create(profile=profile, **validated_data)
+        pathfinder_extra = PathfinderProfileExtra.objects.create(profile=profile, **validated_data)
+
         self._get_or_create_social_links(social_links_data, profile, replace=False)
+
+        if skills_data:
+            PathfinderSkill.objects.bulk_create([PathfinderSkill(pathfinder=pathfinder_extra, **skill) for skill in skills_data])
         
-        for skill in skills_data:
-            PathfinderSkill.objects.create(pathfinder=pathfinder_extra, **skill)
+        if educations_data:
+            PathfinderEducation.objects.bulk_create([PathfinderEducation(pathfinder=pathfinder_extra, **edu) for edu in educations_data])
 
-        for education in educations_data:
-            PathfinderEducation.objects.create(pathfinder=pathfinder_extra, **education)
-
-        for certification in certifications_data:
-            PathfinderCertification.objects.create(pathfinder=pathfinder_extra, **certification)
+        if certifications_data:
+            PathfinderCertification.objects.bulk_create([PathfinderCertification(pathfinder=pathfinder_extra, **cert) for cert in certifications_data])
 
         return pathfinder_extra
 
@@ -193,6 +202,10 @@ class PathfinderProfileSerializer(BaseProfileSerializer):
                 PathfinderCertification.objects.create(pathfinder=instance, **cert)
 
         return instance
+    
+    def clean(self):
+        if self.profile.user.role != 'pathfinder':
+            raise ValidationError("User role must be 'pathfinder' to have this profile type.")
     
 class ProfilePictureSerializer(serializers.ModelSerializer):
     """serializer for enabler profile picture update and retrieve"""

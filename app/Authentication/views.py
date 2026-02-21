@@ -19,7 +19,7 @@ from .utils import sendotp_via_email
 
 # Create your views here.
 def index(request):
-    return HttpResponse("Welcome to Afrivate Authentication Service")
+    return HttpResponse("Welcome to Afrivate Technologies Backend Service")
 
 # user registration view
 class RegisterView(generics.CreateAPIView):
@@ -129,10 +129,12 @@ class ResetPasswordView(generics.GenericAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
+        uid = serializer.validated_data['uid']
+        token = serializer.validated_data['token']
+        password = serializer.validated_data['password']
         # Generate JWT token
         user.tokens()  # to create tokens method in model
-
-        password = serializer.validated_data['password']
+        
         try:
             # Decode token to get user 
             user_id = force_str(urlsafe_base64_decode(uid))

@@ -4,6 +4,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 
 from rest_framework.generics import ListCreateAPIView #, DestroyAPIView
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import PermissionDenied
 from rest_framework import filters
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.generics import RetrieveUpdateDestroyAPIView
@@ -73,7 +74,21 @@ class OpportunityDetailView(RetrieveUpdateDestroyAPIView):
     """
     queryset = Opportunity.objects.all()
     serializer_class = OpportunitySerializer
-    permission_classes = [IsOwnerOrReadOnly]
+    permission_classes = [IsOwnerOrReadOnly, IsEnablerOrReadOnly]
+
+    def perform_update(self, serializer):
+        if self.request.user.role != 'enabler':
+            raise PermissionDenied("Only Enablers can edit opportunities.")
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        # Optional: Add logic to prevent deletion if people have already applied
+        if instance.applicants.count() > 0:
+            # Instead of deleting, we usually just close it
+            instance.is_open = False
+            instance.save()
+            return 
+        instance.delete()
 
 # admin interface with all opportunities and their bookmark counts
 
