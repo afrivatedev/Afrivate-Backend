@@ -269,7 +269,7 @@ SIMPLE_JWT = {
     'BLACKLIST_AFTER_ROTATION': True,
     'AUTH_HEADER_TYPES': ('Bearer',),
     'UPDATE_LAST_LOGIN': True,
-    'TOKEN_OBTAIN_SERIALIZER': 'Authentication.serializers.CustomTokenObtainPairSerializer',
+    'TOKEN_OBTAIN_SERIALIZER': 'user_database.serializers.CustomTokenObtainPairSerializer',
 }
 
 # RAW_ORIGINS = os.environ.get("TRUSTED_ORIGINS", "http://localhost:3000").split(",")

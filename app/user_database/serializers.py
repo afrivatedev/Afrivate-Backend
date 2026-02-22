@@ -189,6 +189,10 @@ class VerifyOTPSerializer(serializers.Serializer):
             })
 
 class VerifyEmailSerializer(serializers.Serializer):
+
+    class Meta:
+        ref_name = "CustomVerifyEmailSerializer"
+        
     # email = serializers.EmailField()    
     token = serializers.CharField(max_length=64)
 
