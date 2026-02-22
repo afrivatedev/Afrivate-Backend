@@ -2,18 +2,13 @@
 The profile app handles things like the pathfinder and Enabler profile view as well as
 government issued identifications for both pathfinder and Enabler.
 """
-from profiles.models import EnablerProfileExtra, PathfinderProfileExtra, Profile
-from profiles.serializers import (
-    SocialLinkSerializer,
-    CredentialSerializer,
-    PathfinderProfileSerializer,
-    EnablerProfileSerializer,
-    ProfilePictureSerializer,
-)
+from profiles.models import *
+from profiles.serializers import *
 
 from django.shortcuts import get_object_or_404
 from django.http import HttpResponse 
 
+from rest_framework.exceptions import PermissionDenied
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import (
@@ -31,8 +26,7 @@ logger = logging.getLogger(__name__)
 def health_check(request):
     return HttpResponse("Profiles app is healthy!")
 
-class BaseProfileView(mixins.CreateModelMixin,
-                mixins.RetrieveModelMixin,
+class BaseProfileView(mixins.RetrieveModelMixin,
                 mixins.UpdateModelMixin,
                 generics.GenericAPIView):
     """Base Profile View for both pathfinder and Enabler."""
@@ -44,18 +38,12 @@ class BaseProfileView(mixins.CreateModelMixin,
     def get(self, request, *args, **kwargs):
         return self.retrieve(request, *args, **kwargs)
 
-    def post(self, request, *args, **kwargs):
-        return self.create(request, *args, **kwargs)
-
     def patch(self, request, *args, **kwargs):
         return self.partial_update(request, *args, **kwargs)
 
     def put(self, request, *args, **kwargs):
         return self.update(request, *args, **kwargs)
 
-    def perform_create(self, serializer):
-        # Don't inject `user` here; serializers pull user from context
-        serializer.save()
 
 class EnablerProfileAPIView(BaseProfileView):
     """
@@ -70,10 +58,8 @@ class EnablerProfileAPIView(BaseProfileView):
         user = self.request.user
         profile, created = Profile.objects.get_or_create(user=user) # ensures a profile instance always exists for the user
 
-        logger.error(f"User {user.username} with role {user.role} is trying to access Enabler profile.")
-
         if user.role != "enabler":
-            from rest_framework.exceptions import PermissionDenied
+            logger.error(f"User {user.username} with role {user.role} is trying to access Enabler profile.")
             raise PermissionDenied("Only users with Enabler role can access Enabler profiles.")
         
         # Use get_or_create so GET and PUT always find 'something' to work with
@@ -92,10 +78,9 @@ class PathfinderProfileAPIView(BaseProfileView):
     def get_object(self):
         user = self.request.user
         profile, created = Profile.objects.get_or_create(user=user) # ensures a profile instance always exists for the user
-
-        logger.error(f"User {user.username} with role {user.role} is trying to access Pathfinder profile.")
-        if user.role != "pathfinder": 
-            from rest_framework.exceptions import PermissionDenied
+        
+        if user.role != "pathfinder":  
+            logger.error(f"User {user.username} with role {user.role} is trying to access Pathfinder profile.")
             raise PermissionDenied("Only users with Pathfinder role can access Pathfinder profiles.")
         
         obj, _ = PathfinderProfileExtra.objects.get_or_create(profile=profile)
@@ -140,11 +125,20 @@ class CredentialViewSet(viewsets.ModelViewSet):
         logger.info("Creating credential for user: %s", user.username)
         serializer.save(profile=user.profile)
 
+
 class SocialLinkViewSet(viewsets.ModelViewSet):
-    """a model viewset to handle CRUD operations on the social link model"""
-
+    """
+    Handles CRUD for social links. 
+    Limits access so users only interact with their own links.
+    """
     serializer_class = SocialLinkSerializer
-    permission_classes = (IsAuthenticated,)
-    authentication_classes = (JWTAuthentication,)
+    permission_classes = [IsAuthenticated,]
+    authentication_classes = [JWTAuthentication,]
 
-  
+    def get_queryset(self):
+        # If the link doesn't belong to the user's profile, it "doesn't exist" (404).
+        return SocialLink.objects.filter(profile=self.request.user.profile)
+
+    def perform_create(self, serializer):
+        # Explicitly attach the link to the current user's profile
+        serializer.save(profile=self.request.user.profile)
