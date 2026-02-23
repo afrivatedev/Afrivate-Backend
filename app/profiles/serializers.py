@@ -163,8 +163,10 @@ class PathfinderProfileSerializer(BaseProfileSerializer):
         
         # profile = Profile.objects.create(user=user, **base_details_data)
         profile, _ = Profile.objects.update_or_create(user=user, defaults=base_details_data)
+
         # pathfinder_extra, _ = PathfinderProfileExtra.objects.update_or_create(profile=profile, **validated_data)
-        pathfinder_extra = PathfinderProfileExtra.objects.create(profile=profile, **validated_data)
+        # pathfinder_extra = PathfinderProfileExtra.objects.create(profile=profile, **validated_data)
+        pathfinder_extra, _ = PathfinderProfileExtra.objects.update_or_create(profile=profile, defaults=validated_data) 
 
         self._get_or_create_social_links(social_links_data, profile, replace=False)
 
