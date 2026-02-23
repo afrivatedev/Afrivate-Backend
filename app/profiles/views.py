@@ -96,7 +96,6 @@ class ProfilePictureAPIView(mixins.RetrieveModelMixin,
     parser_classes = (MultiPartParser, FormParser)
     http_method_names = ("get", "put", "patch", "head", "options")
 
-    logger.info("ProfilePictureAPIView initialized with authentication and permissions.")
     def get_object(self):
         user = self.request.user
         return get_object_or_404(Profile, user=user)
@@ -113,7 +112,6 @@ class CredentialViewSet(viewsets.ModelViewSet):
     permission_classes = (IsAuthenticated,)
     authentication_classes = (JWTAuthentication,)
 
-    logger.info("CredentialViewSet initialized with authentication and permissions.")
     def get_queryset(self):
         """return credentials for the logged-in user"""
         user = self.request.user
@@ -124,7 +122,6 @@ class CredentialViewSet(viewsets.ModelViewSet):
         user = self.request.user
         logger.info("Creating credential for user: %s", user.username)
         serializer.save(profile=user.profile)
-
 
 class SocialLinkViewSet(viewsets.ModelViewSet):
     """
