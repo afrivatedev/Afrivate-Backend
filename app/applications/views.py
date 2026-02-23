@@ -45,9 +45,17 @@ class ApplicationViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         # Automatically set the user to the logged-in pathfinder
-        if self.request.user.role != 'pathfinder':
-            raise serializers.ValidationError("Only Pathfinders can apply for opportunities.")
-        serializer.save(user=self.request.user)
+        user = self.request.user
+        opportunity = serializer.validated_data.get('opportunity')
+
+        # Check for existing application
+        if Application.objects.filter(user=user, opportunity=opportunity).exists():
+            raise ValidationError({"detail": "You have already applied for this opportunity."})
+
+        if user.role != 'pathfinder':
+            raise ValidationError({"detail": "Only Pathfinders can apply."})
+        
+        serializer.save(user=user)
 
     def perform_update(self, serializer):
         instance = self.get_object()
@@ -85,3 +93,4 @@ class ApplicationViewSet(viewsets.ModelViewSet):
 # ReadBrowse FeedPathfinder queries the Opportunities table to see what’s available.
 # UpdateEdit ApplicationPathfinder can update their cover letter if the status is still "Pending."
 # DeleteWithdrawPathfinder deletes their record from the Applications table.
+
