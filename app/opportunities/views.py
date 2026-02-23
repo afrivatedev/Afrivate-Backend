@@ -46,8 +46,7 @@ class OpportunityView(ListCreateAPIView):
     queryset = Opportunity.objects.all().order_by('-posted_at')
     serializer_class = OpportunitySerializer 
     pagination_class = StandardResultsPagination
-
-    permission_classes = [IsEnablerOrReadOnly, IsAuthenticated] # Only enablers can create
+    permission_classes = [IsAuthenticated, IsEnablerOrReadOnly] # Only enablers can create
     
     # Enable Search and Category Filtering
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]

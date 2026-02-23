@@ -54,15 +54,17 @@ class AfrivateLogicTest(TestCase):
         )
         # Test Username login
         try: 
-            auth_user = authenticate(username="pathfinder_test", password=self.password)
+            auth_user = authenticate(email_or_username="pathfinder_test", password=self.password)
             logger.info(f"Authentication with username returned: {auth_user}")
             self.assertEqual(auth_user, user)
             logger.info(f"Authentication successful for username: {user.username} (ID: {user.id})")
+
             # Test Email login
-            auth_email = authenticate(username="pathfinder@test.com", password=self.password)
+            auth_email = authenticate(email_or_username="pathfinder@test.com", password=self.password)
             logger.info(f"Authentication with email returned: {auth_email}")    
             self.assertEqual(auth_email, user)
             logger.info(f"Authentication successful for email: {user.email} (ID: {user.id})")
+
         except Exception as e:
             logger.error(f"Authentication test failed: {e}")
             self.fail(f"Authentication test raised an exception: {e}")
@@ -88,5 +90,3 @@ class AfrivateLogicTest(TestCase):
         self.assertEqual(pathfinder_extra.gmail, user.email)
         logger.info(f"PathfinderProfileExtra data matches user data for user: {user.username} (ID: {user.id})")
 
-    
-logger.info("Authentication tests completed.")
