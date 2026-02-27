@@ -1,7 +1,8 @@
 from django.shortcuts import render
 from django.utils import timezone
 
-from rest_framework import generics, viewsets, status, permissions, serializers
+from rest_framework import viewsets, status
+from django.http import HttpResponse
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -9,13 +10,16 @@ from rest_framework.exceptions import ValidationError
 
 from .serializers import ApplicationSerializer
 from .models import Application
-from user_database.permissions import IsEnablerUser, IsPathfinderUser
+from user_database.permissions import IsEnablerUser #, IsPathfinderUser
 from opportunities.permissions import IsOwnerOrReadOnly, IsEnablerOrReadOnly, IsPathfinder
 
 # Create your views here.
 
 # The pathfinders view and create their applications
 # the enablers can only view applications for their opportunities
+
+def health_check(request):
+    return HttpResponse("Application app is healthy!")
 
 class ApplicationViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated] # Ensure only authenticated users can access
@@ -28,12 +32,25 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         if getattr(self, 'swagger_fake_view', False):
             return Application.objects.none()
         
+        # Healthy Practice: Optimized Queryset
+        base_qs = Application.objects.select_related(
+            'opportunity', 
+            'user', 
+            'user__profile', 
+            'user__profile__pathfinder_extra'
+        ).prefetch_related(
+            'user__profile__pathfinder_extra__pathfinder_skills',
+            'user__profile__social_links'
+        )
+        
         if user.role == 'enabler':
             # Enablers can see the..... applications for opportunities they created
-            return Application.objects.filter(opportunity__created_by=user)
+            # return Application.objects.filter(opportunity__created_by=user)
+            return base_qs.filter(opportunity__created_by=user) # Optimized with select_related and prefetch_related
         # Pathfinders see only their own applications
-        return Application.objects.filter(user=user)
-
+        # return Application.objects.filter(user=user)
+        return base_qs.filter(user=user) 
+    
     def get_permissions(self):
         if self.action == 'create':
             return [IsPathfinder()]
@@ -59,9 +76,13 @@ class ApplicationViewSet(viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         instance = self.get_object()
-        # RULE: Pathfinders can only edit if the Enabler hasn't reviewed it yet
-        if instance.status != 'pending':
+
+        if 'status' in self.request.data and not self.request.user.role == 'enabler':
+             raise ValidationError("Pathfinders cannot modify application status.")
+
+        if instance.status != 'pending' and self.request.user.role == 'pathfinder':
             raise ValidationError("Locked: Application is already under review.")
+            
         serializer.save()
 
     def perform_destroy(self, instance):

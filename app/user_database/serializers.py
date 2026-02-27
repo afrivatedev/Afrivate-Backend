@@ -53,16 +53,16 @@ class CustomUserLoginSerializer(serializers.Serializer):
         username_or_email = data.get('username_or_email')
         password = data.get('password')
 
+        if not username_or_email or not password:
+            raise serializers.ValidationError("Email/Username and password are required.")
+
         # try with email first
-        user = authenticate(email_or_username=username_or_email, password=password)  # can use both username/email to login
-        if not user:
-            # try with username
-            user = authenticate(email_or_username=username_or_email, password=password)
-
+        user = authenticate(email_or_username=username_or_email, password=password)
 
         if not user:
-            raise serializers.ValidationError(
-                {"error": "Invalid email or password"}, code=status.HTTP_401_UNAUTHORIZED)
+            raise serializers.ValidationError("Invalid login credentials.")
+        if not user.is_active:
+            raise serializers.ValidationError("User account is disabled.")
 
         # Store user in context for use in the view
         data['user'] = user

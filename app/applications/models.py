@@ -1,6 +1,6 @@
 from django.db import models
 from django.conf import settings
-from bookmark.models import Opportunity
+from opportunities.models import Opportunity
 
 # Create your models here.
 class Application(models.Model):

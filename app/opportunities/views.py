@@ -8,6 +8,7 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework import filters
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.generics import RetrieveUpdateDestroyAPIView
+from rest_framework.exceptions import ValidationError
 
 from .models import Opportunity
 from bookmark.models import Bookmark
@@ -16,7 +17,7 @@ from .permissions import IsEnablerOrReadOnly, IsOwnerOrReadOnly
 
 # Create your views here
 
-def health_check():
+def health_check(request):
     return HttpResponse("Opportunities app is healthy!")
 
 def admin_opportunity_list(request):
@@ -81,12 +82,12 @@ class OpportunityDetailView(RetrieveUpdateDestroyAPIView):
         serializer.save()
 
     def perform_destroy(self, instance):
-        # Optional: Add logic to prevent deletion if people have already applied
-        if instance.applicants.count() > 0:
-            # Instead of deleting, we usually just close it
+        if instance.applicants.exists():
+            # If applicants exist, we just cloe it instead
             instance.is_open = False
             instance.save()
-            return 
+
+            raise ValidationError("Opportunity cannot be deleted because it has applicants. It has been closed instead.")
         instance.delete()
 
 # admin interface with all opportunities and their bookmark counts
@@ -97,3 +98,9 @@ class OpportunityDetailView(RetrieveUpdateDestroyAPIView):
 # ReadView ApplicantsEnabler views all Applications linked to their specific opportunity_id.
 # UpdateEdit PostingEnabler modifies the description or changes the application status (e.g., "Accepted").
 # DeleteRemove PostingEnabler deletes an opportunity (usually "soft delete" or archiving is better).
+
+
+
+# lock the mine oppportunities from pathfinders 
+#  and the details from pathfinders and enablers who are not the owner of the opportunity
+# change hthe link to accept just www

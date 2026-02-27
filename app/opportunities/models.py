@@ -5,16 +5,15 @@ from django.conf import settings
 
 # Create your models here.
 class Opportunity(models.Model):
-    CATEGORY_CHOICES = [
-        ('volunteering', 'Volunteering'),
-        ('internship', 'Internship'),
-        ('scholarship', 'Scholarship'),
-        ('job', 'Job'),
-        ('grant', 'Grant'),
-    ]
+    class Category(models.TextChoices):
+        VOLUNTEERING = 'volunteering', 'Volunteering'
+        INTERNSHIP = 'internship', 'Internship'
+        SCHOLARSHIP = 'scholarship', 'Scholarship'
+        JOB = 'job', 'Job'
+        GRANT = 'grant', 'Grant'
 
     title = models.CharField(max_length=255, null=False, blank=False)
-    opportunity_type = models.CharField(max_length=100, choices=CATEGORY_CHOICES, default='voluteering', db_index=True)
+    opportunity_type = models.CharField(max_length=100, choices=Category.choices, default=Category.VOLUNTEERING, db_index=True)
     description = models.TextField()
     link = models.URLField(null=False, blank=False)
     # location = models.CharField(max_length=255, null=True, blank=True)  # e.g Remote, On-site
@@ -33,3 +32,6 @@ class Opportunity(models.Model):
         # Allow editing only within 12 hours of posting
         return timezone.now() < self.posted_at + timedelta(hours=12)
     
+    def save(self, *args, **kwargs):
+        # Auto-close opportunity if it's too old (optional logic)
+        super().save(*args, **kwargs)
