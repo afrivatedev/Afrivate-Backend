@@ -248,7 +248,7 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
-    'EXECEPTION_HANDLER': 'profiles.utils.custom_exception_handler',
+    'EXCEPTION_HANDLER': 'profiles.utils.custom_exception_handler',
 }
 
 SWAGGER_SETTINGS = {
@@ -323,7 +323,7 @@ LOGGING = {
         'django': {
             'handlers': ['console'],
             'level': 'INFO', # INFO, ERROR
-            'propagate': True, # change to False to prevent duplicate logs if root logger is also logging
+            'propagate': False, # change to False to prevent duplicate logs if root logger is also logging
         },
         'waitlist': {  
             'handlers': ['console'],

@@ -45,8 +45,8 @@ urlpatterns = [
     
     path('api-auth/', include('rest_framework.urls')),  # Django REST framework login/logout views
     path("accounts/", include("allauth.urls")),
-    path("api/auth/", include("dj_rest_auth.urls")),
-    path("api/auth/registration/", include("dj_rest_auth.registration.urls")),
+    path("api/google-auth/", include("dj_rest_auth.urls")),
+    path("api/google-auth/registration/", include("dj_rest_auth.registration.urls")),
 
     # app's urls 
     path("", Authentication.views.index,),  # Added to serve index view
