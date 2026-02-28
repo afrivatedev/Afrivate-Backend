@@ -2,7 +2,7 @@
 from django.http import HttpResponse, JsonResponse
 from django_filters.rest_framework import DjangoFilterBackend
 
-from rest_framework.generics import ListCreateAPIView #, DestroyAPIView
+from rest_framework.generics import ListCreateAPIView, ListAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import PermissionDenied
 from rest_framework import filters
@@ -59,14 +59,15 @@ class OpportunityView(ListCreateAPIView):
         serializer.save(created_by=self.request.user)
 
 # Specifically for the "My Posted Opportunities" page
-class EnablerOpportunityListView(ListCreateAPIView):
+class EnablerOpportunityListView(ListAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = OpportunitySerializer
 
     def get_queryset(self):
         # Only show opportunities created by the logged-in user
         return Opportunity.objects.filter(created_by=self.request.user)
-
+    
+    
 class OpportunityDetailView(RetrieveUpdateDestroyAPIView):
     """
     Handles GET (Retrieve), PUT/PATCH (Update), and DELETE for a single opportunity.
