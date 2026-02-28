@@ -74,6 +74,8 @@ class PathfinderProfileAPIView(BaseProfileView):
     when creating a profile instance
     """
     serializer_class = PathfinderProfileSerializer
+    permission_classes = (IsAuthenticated, )
+    authentication_classes = (JWTAuthentication, )
 
     def get_object(self):
         user = self.request.user
@@ -116,6 +118,7 @@ class CredentialViewSet(viewsets.ModelViewSet):
         """return credentials for the logged-in user"""
         user = self.request.user
         return user.profile.credentials.all()
+        # return Credential.objects.filter(profile=user.profile)
     
     def perform_create(self, serializer):
         """associate the credential with the logged-in user's profile"""
@@ -139,3 +142,15 @@ class SocialLinkViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         # Explicitly attach the link to the current user's profile
         serializer.save(profile=self.request.user.profile)
+
+class PathfinderViewSet(viewsets.ModelViewSet):
+    """a model viewset to handle CRUD operations on the pathfinder skill, education and certification models"""
+    serializer_class = PathfinderProfileSerializer
+    permission_classes = (IsAuthenticated,)
+    authentication_classes = (JWTAuthentication,)
+
+    def get_queryset(self):
+        """return pathfinder skills, education and certifications for the logged-in user"""
+        user = self.request.user
+        return PathfinderProfileExtra.objects.filter(profile=user.profile)
+    
