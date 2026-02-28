@@ -9,6 +9,7 @@ from django.shortcuts import get_object_or_404
 from django.http import HttpResponse 
 
 from rest_framework.exceptions import PermissionDenied
+from rest_framework.generics import ListAPIView
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import (
@@ -143,7 +144,7 @@ class SocialLinkViewSet(viewsets.ModelViewSet):
         # Explicitly attach the link to the current user's profile
         serializer.save(profile=self.request.user.profile)
 
-class PathfinderViewSet(viewsets.ModelViewSet):
+class PathfinderViewSet(ListAPIView):
     """a model viewset to handle CRUD operations on the pathfinder skill, education and certification models"""
     serializer_class = PathfinderProfileSerializer
     permission_classes = (IsAuthenticated,)
