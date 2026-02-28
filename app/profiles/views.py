@@ -117,6 +117,10 @@ class CredentialViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """return credentials for the logged-in user"""
+
+        if getattr(self, 'swagger_fake_view', False):
+            return self.queryset.none()
+    
         user = self.request.user
         return user.profile.credentials.all()
         # return Credential.objects.filter(profile=user.profile)
@@ -125,6 +129,8 @@ class CredentialViewSet(viewsets.ModelViewSet):
         """associate the credential with the logged-in user's profile"""
         user = self.request.user
         logger.info("Creating credential for user: %s", user.username)
+        logger.info("Profile: %s", user.profile)
+        logger.info("Request FILES: %s", self.request.FILES)  # check the file is actually arriving
         serializer.save(profile=user.profile)
 
 class SocialLinkViewSet(viewsets.ModelViewSet):
@@ -138,6 +144,9 @@ class SocialLinkViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         # If the link doesn't belong to the user's profile, it "doesn't exist" (404).
+        if getattr(self, 'swagger_fake_view', False):
+            return SocialLink.objects.none()
+    
         return SocialLink.objects.filter(profile=self.request.user.profile)
 
     def perform_create(self, serializer):
@@ -152,6 +161,9 @@ class PathfinderViewSet(ListAPIView):
 
     def get_queryset(self):
         """return pathfinder skills, education and certifications for the logged-in user"""
+        if getattr(self, 'swagger_fake_view', False):
+            return self.queryset.none()
+
         user = self.request.user
         return PathfinderProfileExtra.objects.filter(profile=user.profile)
     
