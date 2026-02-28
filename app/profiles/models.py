@@ -28,7 +28,7 @@ def credential_file_path(instance, filename):
 class Profile(models.Model):
     """Profile model. Base Fields shared by both Enabler and the Pathfinder"""
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,related_name="profile")
-    profile_pic = models.ImageField(upload_to=recipe_image_file_path, null=True, blank=True)
+    profile_pic = models.ImageField(upload_to=recipe_image_file_path, null=True, blank=True, max_length=255)
     bio = models.TextField(max_length=150,null=True, blank=True)
     
     # contact and location
@@ -74,7 +74,7 @@ class SocialLink(models.Model):
 class Credential(models.Model):
     """model to handle both pathfinder and Enablers government issued credentials, it is attached to the user instance"""
     document_name = models.CharField(max_length=100, blank=False, null=False)
-    document = models.FileField(upload_to=credential_file_path, blank=False, null=False)
+    document = models.FileField(upload_to=credential_file_path, blank=False, null=False, max_length=255)
     is_verified = models.BooleanField(default=False)
     profile = models.ForeignKey("Profile", on_delete=models.CASCADE, blank=False, null=False, related_name="credentials")
 
