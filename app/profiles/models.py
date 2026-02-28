@@ -22,7 +22,7 @@ def credential_file_path(instance, filename):
     ext = os.path.splitext(filename)[1]  # Get the file extension
     filename = f'{uuid.uuid4()}{ext}' # create a unique filename using uuid
 
-    return os.path.join(PROFILE_UPLOAD_PATH, 'credentials', f'user_{instance.user.id}', filename)
+    return os.path.join(PROFILE_UPLOAD_PATH, 'credentials', f'user_{instance.profile.user.id}', filename)
 
 
 class Profile(models.Model):
