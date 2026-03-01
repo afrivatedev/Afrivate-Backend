@@ -167,3 +167,12 @@ class PathfinderViewSet(ListAPIView):
         user = self.request.user
         return PathfinderProfileExtra.objects.filter(profile=user.profile)
     
+class PublicEnablerProfileView(generics.RetrieveAPIView):
+    """allows any authenticated user to view an enabler's public profile"""
+    serializer_class = EnablerProfileSerializer
+    permission_classes = (IsAuthenticated,)
+    authentication_classes = (JWTAuthentication,)
+
+    def get_object(self):
+        user_id = self.kwargs['user_id']
+        return get_object_or_404(EnablerProfileExtra, profile__user__id=user_id)
