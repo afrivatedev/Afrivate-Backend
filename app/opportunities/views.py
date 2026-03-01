@@ -2,18 +2,22 @@
 from django.http import HttpResponse, JsonResponse
 from django_filters.rest_framework import DjangoFilterBackend
 
-from rest_framework.generics import ListCreateAPIView, ListAPIView
+from rest_framework.generics import ListCreateAPIView, ListAPIView, RetrieveAPIView
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, NotFound
 from rest_framework import filters
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.generics import RetrieveUpdateDestroyAPIView
 from rest_framework.exceptions import ValidationError
 
 from .models import Opportunity
+from applications.models import Application
+from profiles.models import PathfinderProfileExtra
 from bookmark.models import Bookmark
 from .serializers import OpportunitySerializer
-from .permissions import IsEnablerOrReadOnly, IsOwnerOrReadOnly
+from profiles.serializers import ApplicantProfileSerializer
+from applications.serializers import ApplicationListSerializer
+from .permissions import IsEnablerOrReadOnly, IsOwnerOrReadOnly, IsOpportunityOwner
 
 # Create your views here
 
@@ -67,7 +71,7 @@ class EnablerOpportunityListView(ListAPIView):
         # Only show opportunities created by the logged-in user
         return Opportunity.objects.filter(created_by=self.request.user)
     
-    
+# For the Pathfinder (The "Job Seeker" side)    
 class OpportunityDetailView(RetrieveUpdateDestroyAPIView):
     """
     Handles GET (Retrieve), PUT/PATCH (Update), and DELETE for a single opportunity.
@@ -101,7 +105,36 @@ class OpportunityDetailView(RetrieveUpdateDestroyAPIView):
 # DeleteRemove PostingEnabler deletes an opportunity (usually "soft delete" or archiving is better).
 
 
+class OpportunityApplicantListView(ListAPIView):
+    """enabler views all applicants for their opportunity"""
+    permission_classes = [IsAuthenticated, IsOpportunityOwner]
+    serializer_class = ApplicationListSerializer
 
-# lock the mine oppportunities from pathfinders 
-#  and the details from pathfinders and enablers who are not the owner of the opportunity
-# change hthe link to accept just www
+    def get_queryset(self):
+        opportunity_id = self.kwargs['pk']
+        return Application.objects.filter(opportunity_id=opportunity_id).select_related('user')
+
+
+class ApplicantProfileView(RetrieveAPIView):
+    """enabler views a specific applicant's full pathfinder profile"""
+    permission_classes = [IsAuthenticated, IsOpportunityOwner]
+    serializer_class = ApplicantProfileSerializer
+
+    def get_object(self):
+        opportunity_id = self.kwargs['pk']
+        applicant_id = self.kwargs['applicant_id']
+
+        application = Application.objects.filter(
+            opportunity_id=opportunity_id,
+            user_id=applicant_id
+        ).select_related(
+            'user__profile__pathfinder_extra'
+        ).first()
+
+        if not application:
+            raise NotFound("This applicant did not apply to this opportunity.")
+
+        try:
+            return application.user.profile.pathfinder_extra
+        except PathfinderProfileExtra.DoesNotExist:
+            raise NotFound("This applicant has not set up a pathfinder profile yet.")

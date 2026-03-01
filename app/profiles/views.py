@@ -119,7 +119,7 @@ class CredentialViewSet(viewsets.ModelViewSet):
         """return credentials for the logged-in user"""
 
         if getattr(self, 'swagger_fake_view', False):
-            return self.queryset.none()
+            return Credential.objects.none()
     
         user = self.request.user
         return user.profile.credentials.all()
@@ -162,7 +162,7 @@ class PathfinderViewSet(ListAPIView):
     def get_queryset(self):
         """return pathfinder skills, education and certifications for the logged-in user"""
         if getattr(self, 'swagger_fake_view', False):
-            return self.queryset.none()
+            return PathfinderProfileExtra.objects.none()
 
         user = self.request.user
         return PathfinderProfileExtra.objects.filter(profile=user.profile)
