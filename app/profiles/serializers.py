@@ -270,3 +270,21 @@ class ProfilePictureSerializer(serializers.ModelSerializer):
                 pass
 
         return instance
+
+class ApplicantProfileSerializer(serializers.ModelSerializer):
+    """for enablers viewing a pathfinder applicant's profile"""
+    base_details = ProfileSerializer(source="profile", read_only=True)
+    skills = SkillSerializer(source="pathfinder_skills", many=True, read_only=True)
+    educations = EducationSerializer(source="pathfinder_education", many=True, read_only=True)
+    certifications = CertificationSerializer(source="pathfinder_certifications", many=True, read_only=True)
+    social_links = SocialLinkSerializer(source="profile.social_links", many=True, read_only=True)
+    credentials = CredentialSerializer(source="profile.credentials", many=True, read_only=True)
+
+    class Meta:
+        model = PathfinderProfileExtra
+        fields = [
+            'id', 'first_name', 'last_name', 'other_name', 'title',
+            'about', 'work_experience', 'languages',
+            'base_details', 'social_links', 'credentials',
+            'skills', 'educations', 'certifications'
+        ]

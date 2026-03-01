@@ -1,4 +1,12 @@
 from rest_framework.permissions import BasePermission, SAFE_METHODS
+from .models import Opportunity
+
+"""Permissions for CRUD operations on opportunities and applications.
+- IsOwnerOrReadOnly: Only the creator of an opportunity can edit it, but anyone can read it.
+- IsEnablerOrReadOnly: Only authenticated Enablers can create opportunities, but anyone can read them.
+- IsPathfinder: Only authenticated Pathfinders can apply for jobs.
+- IsOpportunityOwner: Only the creator of an opportunity can view its applicants.
+"""
 
 # write the permsissions here
 def has_permission(self, request, view):
@@ -47,4 +55,15 @@ class IsPathfinder(BasePermission):
     """Strictly for Pathfinders to apply for jobs"""
     def has_permission(self, request, view):
         return request.user.is_authenticated and getattr(request.user, "role", None) == "pathfinder"
+    
+
+class IsOpportunityOwner(BasePermission):
+    """Only the creator of an opportunity can view applicants"""
+    def has_permission(self, request, view):
+        opportunity_id = view.kwargs.get('pk')
+        try:
+            opportunity = Opportunity.objects.get(id=opportunity_id)
+            return opportunity.created_by == request.user
+        except Opportunity.DoesNotExist:
+            return False
     

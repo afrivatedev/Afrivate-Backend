@@ -37,3 +37,14 @@ class ApplicationSerializer(serializers.ModelSerializer):
         if user.role != 'pathfinder':
             raise serializers.ValidationError("Only Pathfinders can apply for opportunities.")
         return data
+    
+class ApplicationListSerializer(serializers.ModelSerializer):
+    """lightweight serializer for listing applicants"""
+    applicant_id = serializers.IntegerField(source='user.id', read_only=True)
+    username = serializers.CharField(source='user.username', read_only=True)
+    email = serializers.EmailField(source='user.email', read_only=True)
+
+    class Meta:
+        model = Application
+        fields = ['id', 'applicant_id', 'username', 'email', 'status', 'cover_letter', 'applied_at']
+        read_only_fields = fields
