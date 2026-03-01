@@ -2,8 +2,8 @@
 The profile app handles things like the pathfinder and Enabler profile view as well as
 government issued identifications for both pathfinder and Enabler.
 """
-from profiles.models import *
-from profiles.serializers import *
+from .models import *
+from .serializers import *
 
 from django.shortcuts import get_object_or_404
 from django.http import HttpResponse 
