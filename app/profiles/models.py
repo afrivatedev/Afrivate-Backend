@@ -7,7 +7,7 @@ import uuid
 from django.conf import settings
 from django.db import models
 
-PROFILE_UPLOAD_PATH = 'profile' 
+PROFILE_UPLOAD_PATH = 'afrivate' 
 
 # write your models here.
 def recipe_image_file_path(instance, filename):

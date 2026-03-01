@@ -60,6 +60,7 @@ ALLOWED_HOSTS.extend(
 
 INSTALLED_APPS = [
     "corsheaders",
+    "cloudinary_storage",
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -79,6 +80,7 @@ INSTALLED_APPS = [
 
     # for s3 strorage
     'storages',
+    'cloudinary',
 
     # django apps
     'Authentication',
@@ -222,6 +224,10 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 # This tells WhiteNoise to compress and cache your files (improves performance)
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+
+# Media files (for user uploads)
+MEDIA_URL = '/media/'  # or any prefix you choose
+DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -373,4 +379,10 @@ SOCIALACCOUNT_ADAPTER = 'Authentication.adapter.CustomSocialAccountAdapter'
 
 ACCOUNT_LOGIN_METHODS = {'email'}  
 ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*']
-ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*']
+# ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*'] 
+
+CLOUDINARY_STORAGE = {
+    'CLOUD_NAME': os.getenv("CLOUDINARY_CLOUD_NAME"),
+    'API_KEY': os.getenv("CLOUDINARY_API_KEY"),
+    'API_SECRET': os.getenv("CLOUDINARY_API_SECRET")
+}
