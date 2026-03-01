@@ -67,3 +67,7 @@ urllib3>=2.5.0, <3.0
 
 Werkzeug>=3.1.4, <3.2
 whitenoise>=6.11.0, <7.0
+
+# cloudinary
+cloudinary>= 1.44.1, <1.45
+django-cloudinary-storage>= 0.3.0, <0.4

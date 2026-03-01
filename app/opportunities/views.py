@@ -19,6 +19,9 @@ from profiles.serializers import ApplicantProfileSerializer
 from applications.serializers import ApplicationListSerializer
 from .permissions import IsEnablerOrReadOnly, IsOwnerOrReadOnly, IsOpportunityOwner
 
+import logging
+logger = logging.getLogger(__name__)
+
 # Create your views here
 
 def health_check(request):
@@ -111,6 +114,7 @@ class OpportunityApplicantListView(ListAPIView):
     serializer_class = ApplicationListSerializer
 
     def get_queryset(self):
+        logger.info(f"Fetching applicants for opportunity ID: {self.kwargs['pk']} by user: {self.request.user.username}")
         opportunity_id = self.kwargs['pk']
         return Application.objects.filter(opportunity_id=opportunity_id).select_related('user')
 
@@ -121,6 +125,7 @@ class ApplicantProfileView(RetrieveAPIView):
     serializer_class = ApplicantProfileSerializer
 
     def get_object(self):
+        logger.info(f"Fetching profile for applicant ID: {self.kwargs['applicant_id']} for opportunity ID: {self.kwargs['pk']} by user: {self.request.user.username}")
         opportunity_id = self.kwargs['pk']
         applicant_id = self.kwargs['applicant_id']
 
@@ -130,8 +135,10 @@ class ApplicantProfileView(RetrieveAPIView):
         ).select_related(
             'user__profile__pathfinder_extra'
         ).first()
+        logger.info(f"Application query result: {application}")
 
         if not application:
+            logger.warning(f"No application found for applicant ID: {applicant_id} to opportunity ID: {opportunity_id}")
             raise NotFound("This applicant did not apply to this opportunity.")
 
         try:

@@ -9,7 +9,7 @@ urlpatterns = [
     # profile endpoints.
     path('pathfinderprofile/', PathfinderProfileAPIView.as_view(), name="pathfinder-profile"),
     path('enablerprofile/', EnablerProfileAPIView.as_view(), name="enabler-profile"),
-    path('view-profile/<int:pk>/', PathfinderViewSet.as_view(), name="view-profile"), # endpoint for viewing pathfinder profiles by their ID
+    # path('view-profile/<int:pk>/', PathfinderViewSet.as_view(), name="view-profile"), # endpoint for viewing pathfinder profiles by their ID
 
     # profile picture end point.
     path('profile/picture/', ProfilePictureAPIView.as_view(), name="profile-pic"),
