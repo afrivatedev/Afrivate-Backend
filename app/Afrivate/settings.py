@@ -277,6 +277,9 @@ SIMPLE_JWT = {
 # RAW_ORIGINS = os.environ.get("TRUSTED_ORIGINS", "http://localhost:3000").split(",")
 # CORS_ALLOWED_ORIGINS = RAW_ORIGINS
 # CSRF_TRUSTED_ORIGINS = RAW_ORIGINS
+# SECURE_SSL_REDIRECT = True
+# SESSION_COOKIE_SECURE = True
+# CSRF_COOKIE_SECURE = True
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000", # local frontend
@@ -293,13 +296,7 @@ CSRF_TRUSTED_ORIGINS = [
 
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_ALL_ORIGINS = False
-# CORS_ALLOW_CREDENTIALS = True # for cookies, to be enabled later if needed
 PASSWORD_RESET_TIMEOUT = 86400  # 24 hours in seconds, COULD BE REDUCED FOR BETTER SECURITY
-
-
-# SECURE_SSL_REDIRECT = True
-# SESSION_COOKIE_SECURE = True
-# CSRF_COOKIE_SECURE = True
 
 
 LOGGING = {
@@ -367,15 +364,11 @@ APPEND_SLASH = True
 
 # django allauth settings for social login, currently only google but can be extended to others in the future
 SITE_ID = 1 # required for django allauth
-# ACCOUNT_EMAIL_REQUIRED = True
-# ACCOUNT_USERNAME_REQUIRED = False
-# ACCOUNT_AUTHENTICATION_METHOD = "email"
 ACCOUNT_EMAIL_VERIFICATION = "none"
 SOCIALACCOUNT_ADAPTER = 'Authentication.adapter.CustomSocialAccountAdapter'
 
 ACCOUNT_LOGIN_METHODS = {'email'}  
 ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*']
-# ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*'] 
 
 CLOUDINARY_STORAGE = {
     'CLOUD_NAME': os.getenv("CLOUDINARY_CLOUD_NAME"),
