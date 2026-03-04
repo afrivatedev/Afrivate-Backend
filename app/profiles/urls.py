@@ -19,5 +19,6 @@ urlpatterns = [
     path('social-links/', SocialLinkViewSet.as_view({'get': 'list', 'post': 'create'}), name='social-links'), # new endpoint for social links
     path('social-links/<int:pk>/', SocialLinkViewSet.as_view({'put': 'update', 'delete': 'destroy'}), name='social-link-detail'), # endpoint for updating/deleting individual social links
     path('credentials/<int:pk>/', CredentialViewSet.as_view({'put': 'update', 'delete': 'destroy'}), name='credential-detail'), # endpoint for updating/deleting individual credentials
-    path('enablerprofile/<int:user_id>/', PublicEnablerProfileView.as_view(), name='public-enabler-profile'), # endpoint for viewing an enabler's public profile by user ID
+    path('enablerprofile/user/<int:user_id>/', PublicEnablerProfileView.as_view(), name='public-enabler-profile'), # endpoint for viewing an enabler's public profile by user ID
+    path("pathfinderprofile/user/<int:user_id>/", PublicPathfinderProfileView.as_view(), name='public-pathfinder-profile') # endpoint for viewing a pathfinder's public profile by user ID
 ]
