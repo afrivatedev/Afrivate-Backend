@@ -288,3 +288,5 @@ class ApplicantProfileSerializer(serializers.ModelSerializer):
             'base_details', 'social_links', 'credentials',
             'skills', 'educations', 'certifications'
         ]
+
+# the url link can be www. not https://www. because some users might not include the protocol when entering their social links

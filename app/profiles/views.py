@@ -166,10 +166,34 @@ class PathfinderViewSet(ListAPIView):
 
         user = self.request.user
         return PathfinderProfileExtra.objects.filter(profile=user.profile)
-    
-class PublicEnablerProfileView(generics.RetrieveAPIView):
-    """allows any authenticated user to view an enabler's public profile"""
+
+class EnablerViewSet(ListAPIView):
+    "a model viewsets to view "
     serializer_class = EnablerProfileSerializer
+    permission_classes =  (IsAuthenticated,)
+    authentication_classes = (JWTAuthentication)
+
+    def get_queryset(self):
+        """return organizations details for the logged-in user"""
+        if getattr(self, 'swagger_fake_view', False):
+            return PathfinderProfileExtra.objects.none()
+
+        user = self.request.user
+        return PathfinderProfileExtra.objects.filter(profile=user.profile)
+
+class PublicPathfinderProfileView(generics.RetrieveAPIView):
+    """allows any authenticated user to view an Pathfinders's public profile"""
+    serializer_class = EnablerProfileSerializer
+    permission_classes = (IsAuthenticated,)
+    authentication_classes = (JWTAuthentication,)
+
+    def get_object(self):
+        user_id = self.kwargs['user_id']
+        return get_object_or_404(PathfinderProfileExtra, profile__user__id=user_id)
+
+class PublicEnablerProfileView(generics.RetrieveAPIView):
+    """allows any authenticated user to view a Enabler's public profile"""
+    serializer_class = PathfinderProfileSerializer
     permission_classes = (IsAuthenticated,)
     authentication_classes = (JWTAuthentication,)
 
