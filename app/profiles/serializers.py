@@ -192,19 +192,22 @@ class PathfinderProfileSerializer(BaseProfileSerializer):
 
         if skills_data is not None:
             instance.pathfinder_skills.all().delete()
-            for skill in skills_data:
-                PathfinderSkill.objects.create(pathfinder=instance, **skill)
+            PathfinderSkill.objects.bulk_create([
+                PathfinderSkill(pathfinder=instance, **skill) for skill in skills_data
+            ])
 
         if educations_data is not None:
             instance.pathfinder_education.all().delete()
-            for education in educations_data:
-                PathfinderEducation.objects.create(pathfinder=instance, **education)
+            PathfinderEducation.objects.bulk_create([
+                PathfinderEducation(pathfinder=instance, **edu) for edu in educations_data
+            ])
 
         if certifications_data is not None:
             instance.pathfinder_certifications.all().delete()
-            for cert in certifications_data:
-                PathfinderCertification.objects.create(pathfinder=instance, **cert)
-
+            PathfinderCertification.objects.bulk_create([
+                PathfinderCertification(pathfinder=instance, **cert) for cert in certifications_data
+            ])
+            
         return instance
     
     def clean(self):
