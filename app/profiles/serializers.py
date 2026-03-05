@@ -131,9 +131,11 @@ class EnablerProfileSerializer(BaseProfileSerializer):
 
 
 class PathfinderProfileSerializer(BaseProfileSerializer):
-    skills = SkillSerializer(many=True, required=False)
-    educations = EducationSerializer(many=True, required=False)
-    certifications = CertificationSerializer(many=True, required=False)
+    skills = SkillSerializer(source="pathfinder_skills", many=True, required=False)
+    educations = EducationSerializer(source="pathfinder_education", many=True, required=False)
+    certifications = CertificationSerializer(source="pathfinder_certifications", many=True, required=False)
+    credentials = CredentialSerializer(source="profile.credentials", many=True, read_only=True)  # ← add this
+
 
     class Meta:
         model = PathfinderProfileExtra
@@ -287,6 +289,18 @@ class ApplicantProfileSerializer(serializers.ModelSerializer):
             'about', 'work_experience', 'languages',
             'base_details', 'social_links', 'credentials',
             'skills', 'educations', 'certifications'
+        ]
+
+class OriganizationProfileSerializer(serializers.ModelSerializer):
+    """for pathfinders viewing an Organization's profile"""
+    base_details = ProfileSerializer(source="profile", read_only=True)
+    social_links = SocialLinkSerializer(source="profile.social_links", many=True, read_only=True)
+
+    class Meta:
+        model = EnablerProfileExtra
+        fields = [
+            'id', 'organization_name', 'description',
+            'base_details', 'social_links'
         ]
 
 # the url link can be www. not https://www. because some users might not include the protocol when entering their social links

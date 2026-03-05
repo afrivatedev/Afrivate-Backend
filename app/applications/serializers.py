@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import Application
 from profiles.serializers import PathfinderProfileSerializer
+from profiles.models import PathfinderProfileExtra
 
 class ApplicationSerializer(serializers.ModelSerializer):
     user_name = serializers.ReadOnlyField(source='user.username')
@@ -10,7 +11,7 @@ class ApplicationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Application
         fields = ['id','user','user_name','pathfinder_profile',
-                  'opportunity','opportunity_title', 'status',
+                  'opportunity','opportunity_title', 'resume', 'status',
                     'cover_letter', 'applied_at', 'reviewed_at', ]
         read_only_fields = ['status', 'user', 'applied_at', 'reviewed_at']
 
@@ -25,10 +26,14 @@ class ApplicationSerializer(serializers.ModelSerializer):
     def get_pathfinder_profile(self, obj):
         # Fetch the PathfinderExtra related to the user who applied
         try:
-            from profiles.models import PathfinderProfileExtra
-            extra = PathfinderProfileExtra.objects.get(profile__user=obj.user)
-            return PathfinderProfileSerializer(extra).data
-        except:
+            extra = PathfinderProfileExtra.objects.select_related('profile__user').prefetch_related(
+                'profile__social_links', 'profile__credentials',
+                'pathfinder_skills', 'pathfinder_education',
+                'pathfinder_certifications'
+            ).get(profile__user=obj.user)
+            
+            return PathfinderProfileSerializer(extra, context=self.context).data
+        except PathfinderProfileSerializer.DoesNotExist:
             return None
 
     def validate(self, data):
@@ -46,5 +51,5 @@ class ApplicationListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Application
-        fields = ['id', 'applicant_id', 'username', 'email', 'status', 'cover_letter', 'applied_at']
+        fields = ['id', 'applicant_id', 'username', 'email', 'status', 'cover_letter', 'applied_at', 'resume']
         read_only_fields = fields
