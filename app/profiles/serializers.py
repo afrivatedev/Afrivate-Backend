@@ -82,7 +82,8 @@ class BaseProfileSerializer(serializers.ModelSerializer):
             self._get_or_create_social_links(social_links_data, instance.profile, replace=True)
 
         for attr, value in validated_data.items():
-            setattr(instance, attr, value)
+            if not isinstance(value, (list, models.QuerySet)):
+                setattr(instance, attr, value)
 
         instance.save()
         return instance
@@ -207,9 +208,9 @@ class PathfinderProfileSerializer(BaseProfileSerializer):
             PathfinderCertification.objects.bulk_create([
                 PathfinderCertification(pathfinder=instance, **cert) for cert in certifications_data
             ])
-            
+
         return instance
-    
+
     def clean(self):
         if self.profile.user.role != 'pathfinder':
             raise ValidationError("User role must be 'pathfinder' to have this profile type.")
