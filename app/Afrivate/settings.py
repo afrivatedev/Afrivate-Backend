@@ -371,7 +371,7 @@ ACCOUNT_LOGIN_METHODS = {'email'}
 ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*']
 
 CLOUDINARY_STORAGE = {
-    # "SECURE": True,
+    "SECURE": True,
     "RESOURCE_TYPE": "auto",
     'CLOUD_NAME': os.getenv("CLOUDINARY_CLOUD_NAME"),
     'API_KEY': os.getenv("CLOUDINARY_API_KEY"),
