@@ -1,12 +1,13 @@
 from rest_framework import serializers
 from .models import Application
-from profiles.serializers import PathfinderProfileSerializer
+from profiles.serializers import PathfinderProfileSerializer, SignedCloudinaryFileField
 from profiles.models import PathfinderProfileExtra
 
 class ApplicationSerializer(serializers.ModelSerializer):
     user_name = serializers.ReadOnlyField(source='user.username')
     opportunity_title = serializers.ReadOnlyField(source='opportunity.title')
     pathfinder_profile = serializers.SerializerMethodField()
+    resume = SignedCloudinaryFileField(required=False, allow_null=True)
     
     class Meta:
         model = Application
@@ -48,6 +49,7 @@ class ApplicationListSerializer(serializers.ModelSerializer):
     applicant_id = serializers.IntegerField(source='user.id', read_only=True)
     username = serializers.CharField(source='user.username', read_only=True)
     email = serializers.EmailField(source='user.email', read_only=True)
+    resume = SignedCloudinaryFileField(read_only=True)
 
     class Meta:
         model = Application
