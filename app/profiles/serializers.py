@@ -7,7 +7,45 @@ from PIL import Image
 from django.core.exceptions import ValidationError
 from django.db import transaction
 
+import cloudinary.utils
+
 from profiles.models import *
+
+
+class SignedCloudinaryFileField(serializers.FileField):
+    """
+    A read-aware serializer field that generates a signed Cloudinary URL when
+    serializing file/document fields.
+
+    Cloudinary may block raw files (PDFs, DOCX, etc.) with "Access control —
+    Blocked for delivery" when the account enforces strict transformations or
+    authenticated delivery.  A signed URL includes a cryptographic signature
+    that proves the request originates from an authorised server, bypassing
+    those restrictions while keeping the underlying resource private.
+
+    Note: the generated URLs are signed but do not have a default expiration
+    time.  They remain valid until the underlying resource is deleted or the
+    Cloudinary account credentials are rotated.
+    """
+
+    def to_representation(self, value):
+        if not value or not value.name:
+            return None
+        try:
+            url, _ = cloudinary.utils.cloudinary_url(
+                value.name,
+                resource_type="raw",
+                type="upload",
+                sign_url=True,
+                secure=True,
+            )
+            return url
+        except Exception:
+            # Fall back to the plain URL so the field is never silently broken.
+            request = self.context.get("request")
+            if request is not None:
+                return request.build_absolute_uri(value.url)
+            return value.url
 
 class SocialLinkSerializer(serializers.ModelSerializer):
     """serializer for the social link model"""
@@ -18,6 +56,8 @@ class SocialLinkSerializer(serializers.ModelSerializer):
 
 class CredentialSerializer(serializers.ModelSerializer):
     """serializer for the credential model"""
+    document = SignedCloudinaryFileField(required=True)
+
     class Meta:
         model = Credential
         fields = ("id", "document_name", "document", "is_verified")
