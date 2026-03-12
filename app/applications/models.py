@@ -12,9 +12,19 @@ class Application(models.Model):
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='applications')
     opportunity = models.ForeignKey(Opportunity, on_delete=models.CASCADE, related_name='applicants')
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
     cover_letter = models.TextField(blank=True)
+
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
+    
     resume = models.FileField(upload_to='resumes/', null=True, blank=True)
+    profile_resume = models.ForeignKey(
+        "profiles.Credential",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL
+    )
+
+    
     applied_at = models.DateTimeField(auto_now_add=True)
     reviewed_at = models.DateTimeField(null=True, blank=True)
 
