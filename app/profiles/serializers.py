@@ -16,16 +16,6 @@ class SignedCloudinaryFileField(serializers.FileField):
     """
     A read-aware serializer field that generates a signed Cloudinary URL when
     serializing file/document fields.
-
-    Cloudinary may block raw files (PDFs, DOCX, etc.) with "Access control —
-    Blocked for delivery" when the account enforces strict transformations or
-    authenticated delivery.  A signed URL includes a cryptographic signature
-    that proves the request originates from an authorised server, bypassing
-    those restrictions while keeping the underlying resource private.
-
-    Note: the generated URLs are signed but do not have a default expiration
-    time.  They remain valid until the underlying resource is deleted or the
-    Cloudinary account credentials are rotated.
     """
 
     def to_representation(self, value):
