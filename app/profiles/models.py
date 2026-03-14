@@ -74,8 +74,8 @@ class SocialLink(models.Model):
 
 class Credential(models.Model):
     """model to handle both pathfinder and Enablers government issued credentials, it is attached to the user instance"""
-    document_name = models.CharField(max_length=100, blank=False, null=False)
-    # document = models.FileField(upload_to=credential_file_path, blank=False, null=False, max_length=255)
+    document_name = models.CharField(max_length=100)
+    # document = models.FileField(storage=RawMediaCloudinaryStorage(tag_options={'type': 'private'}), upload_to=credential_file_path, max_length=255)
     document = models.FileField(storage=RawMediaCloudinaryStorage(), upload_to=credential_file_path, max_length=255)
     is_verified = models.BooleanField(default=False)
     profile = models.ForeignKey("Profile", on_delete=models.CASCADE, blank=False, null=False, related_name="credentials")
