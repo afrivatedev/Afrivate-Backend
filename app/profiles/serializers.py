@@ -19,22 +19,20 @@ class SignedCloudinaryFileField(serializers.FileField):
     """
 
     def to_representation(self, value):
-        if not value or not value.name:
+        if not value or not hasattr(value, 'name') or not value.name:
             return None
+            
         try:
             url, _ = cloudinary.utils.cloudinary_url(
                 value.name,
-                resource_type="raw",
-                type="upload",
+                resource_type="raw", 
+                type="upload",      
                 sign_url=True,
                 secure=True,
             )
             return url
-        except Exception:
-            # Fall back to the plain URL so the field is never silently broken.
-            request = self.context.get("request")
-            if request is not None:
-                return request.build_absolute_uri(value.url)
+        except Exception as e:  
+            print(f"Cloudinary Signature Error: {e}")
             return value.url
 
 class SocialLinkSerializer(serializers.ModelSerializer):
