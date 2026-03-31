@@ -286,12 +286,13 @@ CORS_ALLOWED_ORIGINS = [
     'https://afrivate-tech.github.io',
     'https://afrivate-backend-production.up.railway.app',
     'https://afrivate.org',
-    'https://www.afrivate.org'
+    'https://www.afrivate.org', 
+    'https://afrivate-volunteer-module-frontend.vercel.app'
 ]
 
 CSRF_TRUSTED_ORIGINS = [
         'https://afrivate-backend-production.up.railway.app',
-        'https://afrivate.org', 'https://www.afrivate.org'
+        'https://afrivate.org', 'https://www.afrivate.org', 'https://afrivate-volunteer-module-frontend.vercel.app'
 ]
 
 CORS_ALLOW_CREDENTIALS = True
