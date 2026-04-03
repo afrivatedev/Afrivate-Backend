@@ -1,10 +1,46 @@
 from rest_framework import serializers
-from .models import Opportunity, Bookmark
+
+from .models import Bookmark, BookmarkUser
+from opportunities.models import Opportunity
 from opportunities.serializers import OpportunitySerializer
+from profiles.serializers import ApplicantProfileSerializer
+
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 # write serializers here
+class BookmarkUserSerializer(serializers.ModelSerializer):
+    # Write: accept a pathfinder's USER pk
+    pathfinder_id = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.filter(profile__pathfinder_extra__isnull=False),
+        source='pathfinder',
+        write_only=True
+    )
+    # Read: return the pathfinder's profile details 
+    pathfinder_details = ApplicantProfileSerializer(
+        source='pathfinder.profile.pathfinder_extra',
+        read_only=True
+    )
+
+    class Meta:
+        model = BookmarkUser
+        fields = ['id', 'pathfinder_id', 'pathfinder_details', 'created_at']
+        read_only_fields = ['created_at']
+
+
+    def validate(self, attrs):
+        enabler = self.context['request'].user
+        pathfinder = attrs.get('pathfinder')
+
+        # Enforce unique together here since the enabler comes from request, not payload
+        if BookmarkUser.objects.filter(enabler=enabler, pathfinder=pathfinder).exists():
+            raise serializers.ValidationError("You have already bookmarked this pathfinder.")
+        return attrs
+
+
 class BookmarkSerializer(serializers.ModelSerializer):
-    opportunity = OpportunitySerializer(read_only=True)  # nested details
+    opportunity = OpportunitySerializer(read_only=True)
     opportunity_id = serializers.PrimaryKeyRelatedField(
         queryset=Opportunity.objects.all(),
         source='opportunity',
@@ -14,15 +50,14 @@ class BookmarkSerializer(serializers.ModelSerializer):
     class Meta:
         model = Bookmark
         fields = ['id', 'opportunity', 'opportunity_id', 'created_at']
-        read_only_fields = ['user', 'created_at']
+        read_only_fields = ['created_at']
+        
 
-    def validate(self, data):
+    def validate(self, attrs):
         user = self.context['request'].user
-        opportunity = data['opportunity']
-        if Bookmark.objects.filter(user=user, opportunity=opportunity).exists():
-            raise serializers.ValidationError("You already bookmarked this opportunity.")
-        return data
+        opportunity = attrs.get('opportunity')
 
-    def create(self, validated_data):
-        validated_data['user'] = self.context['request'].user
-        return super().create(validated_data)
+        # Enforce unique together here since the user comes from request, not payload
+        if Bookmark.objects.filter(user=user, opportunity=opportunity).exists():
+            raise serializers.ValidationError("You have already bookmarked this opportunity.")
+        return attrs
