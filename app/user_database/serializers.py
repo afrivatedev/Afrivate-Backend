@@ -212,7 +212,6 @@ class VerifyEmailSerializer(serializers.Serializer):
 
     def verify(self):
         """Process the verification"""
-       
         verification = self.verification_obj  
 
         try:
@@ -247,3 +246,42 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         token["email"] = user.email
 
         return token
+    
+
+class VerifyRegistrationOTPSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    otp = serializers.CharField(max_length=6)
+
+    def validate(self, attrs):
+        email = attrs.get('email').lower().strip()
+        otp = attrs.get('otp')
+
+        verification = EmailVerification.objects.filter(
+            email=email,
+            token=otp,
+            verification_type='user_signup',
+            is_verified=False
+        ).order_by('-created_at').first()
+
+        if not verification:
+            raise serializers.ValidationError({
+                'otp': 'Invalid or incorrect OTP code.'
+            })
+
+        if verification.is_expired():
+            raise serializers.ValidationError({
+                'otp': 'OTP has expired. Please request a new one.'
+            })
+
+        try:
+            user = CustomUser.objects.get(email=email)
+            
+            attrs['verification'] = verification
+            attrs['user'] = user
+            
+        except CustomUser.DoesNotExist:
+            raise serializers.ValidationError({
+                'email': 'User not found.'
+            })
+            
+        return attrs 
