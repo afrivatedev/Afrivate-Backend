@@ -5,6 +5,7 @@ from django.utils.http import urlsafe_base64_decode
 from django.http import HttpResponse, HttpResponseRedirect
 from django.contrib.auth.tokens import default_token_generator
 from django.conf import settings
+from django.core.mail import send_mail
 
 from rest_framework import generics, status
 from rest_framework.views import APIView
@@ -12,7 +13,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from user_database.models import CustomUser
+from user_database.models import CustomUser, EmailVerification
 from user_database.serializers import *
 
 from .utils import sendotp_via_email
@@ -35,9 +36,31 @@ class RegisterView(generics.CreateAPIView):
 
         user = serializer.save()
 
+        verification, otp = EmailVerification.create_otp_verification(
+            email=user.email,
+            verification_type='user_signup',
+            user=user,
+            expiry_minutes=10
+        )
+
+        try:
+            send_mail(
+                subject="Verify your Afrivate Account",
+                message=f"Hello {user.first_name or user.username},\n\nYour registration was successful. "
+                        f"Your One-Time Password (OTP) is: {otp}\n\n"
+                        f"This code will expire in 10 minutes.",
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[user.email],
+                fail_silently=False,
+            )
+            logging.info(f"Registration OTP sent to {user.email}")
+        except Exception as e:
+            logging.error(f"Failed to send Registration OTP to {user.email}: {e}")
+
+
         return Response({
             #"id": user.id,
-            "message": "User registered successfully",
+            "message": "User registered successfully. Please check your email for the OTP verification code.",
             "user": {
                 "username": user.username,
                 "email": user.email,
@@ -56,6 +79,11 @@ class LoginView(generics.GenericAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data['user']
+
+        if not user.is_email_verified:
+            return Response({
+                "error": "Account not verified. Please verify your email using the OTP sent to you."
+            }, status=status.HTTP_403_FORBIDDEN)
 
         # Generate JWT token
         tokens = user.tokens()  # to create tokens method in model
@@ -207,8 +235,8 @@ class DeleteUserView(generics.DestroyAPIView):
 
 # otp verify view
 class OtpVerifyView(generics.GenericAPIView): 
-    serializer_class = VerifyOTPSerializer  
-    # permission_classes = [IsAuthenticated]
+    serializer_class = VerifyRegistrationOTPSerializer 
+    permission_classes = [AllowAny]
             
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -218,15 +246,25 @@ class OtpVerifyView(generics.GenericAPIView):
         verification = serializer.validated_data['verification']
         user = serializer.validated_data['user']
 
-        logging.info(f"OTP verified for user {user.email}")
-         
+        verification.mark_verified()
+
+        user.is_email_verified = True
+        user.save()
+
+        logging.info(f"OTP verified successfully for user {user.email}")
+        
         # Generate tokens
         tokens = user.tokens()
         
         return Response({
             "success": True,
-            "message": "OTP verified successfully",
-            # "refresh": str(tokens['refresh_token']),
+            "message": "Email verified successfully.",
+            "user": {
+                "email": user.email,
+                "username": user.username,
+                "is_email_verified": user.is_email_verified
+            },
+            "refresh": str(tokens['refresh_token']),
             "access": str(tokens['access_token'])
         }, status=status.HTTP_200_OK)
     
@@ -239,7 +277,7 @@ class VerifyEmailView(generics.GenericAPIView):
         token = request.query_params.get('token')
 
         if not token:
-             return HttpResponseRedirect(f"{settings.FRONTEND_URL}/verify-error?reason=no_token")
+            return HttpResponseRedirect(f"{settings.FRONTEND_URL}/verify-error?reason=no_token")
         
         serializer = self.get_serializer(data={'token': token})
 
