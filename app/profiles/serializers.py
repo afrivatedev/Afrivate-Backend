@@ -10,7 +10,9 @@ from django.db import transaction
 import cloudinary.utils
 
 from profiles.models import *
+import logging
 
+logger = logging.getLogger(__name__)
 
 class SignedCloudinaryFileField(serializers.FileField):
     """
@@ -97,6 +99,7 @@ class BaseProfileSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         base_details_data = validated_data.pop("profile", None)
         social_links_data = validated_data.pop("social_links", None)
+        logger.debug(f"Updating profile for {instance.profile.user.username}. Base details: {base_details_data}, Social links: {social_links_data}")
 
         if base_details_data:
             profile_instance = instance.profile
@@ -107,6 +110,7 @@ class BaseProfileSerializer(serializers.ModelSerializer):
 
         # If social_links provided, replace existing with new set
         if social_links_data is not None:
+            logger.debug(f"Updating social links for {instance.profile.user.username}. Data: {social_links_data}")
             self._get_or_create_social_links(social_links_data, instance.profile, replace=True)
 
         for attr, value in validated_data.items():
@@ -145,6 +149,7 @@ class EnablerProfileSerializer(BaseProfileSerializer):
         user = self.context["request"].user
         base_details_data = validated_data.pop("profile", None)  # 'profile' key comes from source on base_details
         social_links_data = validated_data.pop("social_links", [])
+        logger.debug(f"Creating Enabler profile for {user.username}. Base details: {base_details_data}, Social links: {social_links_data}")
 
         if base_details_data is None:
             raise serializers.ValidationError("Profile data is required to create Enabler profile.")
@@ -160,11 +165,10 @@ class EnablerProfileSerializer(BaseProfileSerializer):
 
 
 class PathfinderProfileSerializer(BaseProfileSerializer):
-    skills = SkillSerializer(source="pathfinder_skills", many=True, required=False)
-    educations = EducationSerializer(source="pathfinder_education", many=True, required=False)
-    certifications = CertificationSerializer(source="pathfinder_certifications", many=True, required=False)
+    skills = SkillSerializer(source="pathfinder.skills", many=True, required=False)
+    educations = EducationSerializer(source="profile.educations", many=True, required=False)
+    certifications = CertificationSerializer(source="pathfinder.certifications", many=True, required=False)
     credentials = CredentialSerializer(source="profile.credentials", many=True, read_only=True)  # ← add this
-
 
     class Meta:
         model = PathfinderProfileExtra
@@ -194,22 +198,20 @@ class PathfinderProfileSerializer(BaseProfileSerializer):
         
         # profile = Profile.objects.create(user=user, **base_details_data)
         profile, _ = Profile.objects.update_or_create(user=user, defaults=base_details_data)
-
         # pathfinder_extra, _ = PathfinderProfileExtra.objects.update_or_create(profile=profile, **validated_data)
         # pathfinder_extra = PathfinderProfileExtra.objects.create(profile=profile, **validated_data)
         pathfinder_extra, _ = PathfinderProfileExtra.objects.update_or_create(profile=profile, defaults=validated_data) 
-
         self._get_or_create_social_links(social_links_data, profile, replace=False)
 
         if skills_data:
             PathfinderSkill.objects.bulk_create([PathfinderSkill(pathfinder=pathfinder_extra, **skill) for skill in skills_data])
-        
+            
         if educations_data:
             PathfinderEducation.objects.bulk_create([PathfinderEducation(pathfinder=pathfinder_extra, **edu) for edu in educations_data])
-
+            
         if certifications_data:
             PathfinderCertification.objects.bulk_create([PathfinderCertification(pathfinder=pathfinder_extra, **cert) for cert in certifications_data])
-
+            
         return pathfinder_extra
 
     def update(self, instance, validated_data):
@@ -334,5 +336,3 @@ class OriganizationProfileSerializer(serializers.ModelSerializer):
             'id', 'organization_name', 'description',
             'base_details', 'social_links'
         ]
-
-# the url link can be www. not https://www. because some users might not include the protocol when entering their social links

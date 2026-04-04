@@ -36,17 +36,6 @@ class BookmarkListCreateView(ListCreateAPIView):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
-# list all bookmarked opportunities for a user /api/bookmarks/ GET {200} OR  /api/opportunities/saved/
-# class UserBookmarkListView(ListCreateAPIView):
-#     """ List all bookmarked opportunities for the authenticated user.
-#      GET /api/bookmarks/
-#      """
-#     permission_classes = [IsAuthenticated]
-#     serializer_class = BookmarkSerializer
-
-#     def get_queryset(self):
-#         user = self.request.user
-#         return Bookmark.objects.filter(user=user)
 
 # remove opportunity (unbookmark) /api/bookmarks/{opportunity_id}/ DELETE {204 No Content}
 class BookmarkDeleteView(DestroyAPIView):
@@ -73,8 +62,10 @@ class PathfinderBookmarkView(ListCreateAPIView):
 
     def get_queryset(self):
         # Only show the bookmarks created by THIS enabler
+        user = self.request.user
+
         return BookmarkUser.objects.filter(
-            enabler=self.request.user
+            enabler=user
         ).select_related(
             'pathfinder__profile__pathfinder_extra'
         )
