@@ -66,9 +66,7 @@ class PathfinderBookmarkView(ListCreateAPIView):
 
         return BookmarkUser.objects.filter(
             enabler=user
-        ).select_related(
-            'pathfinder__profile__pathfinder_extra'
-        )
+        ).select_related('pathfinder', 'pathfinder__user')
 
     def perform_create(self, serializer):
         serializer.save(enabler=self.request.user)
