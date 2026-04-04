@@ -19,7 +19,7 @@ class BookmarkUserSerializer(serializers.ModelSerializer):
     )
     # Read: return the pathfinder's profile details 
     pathfinder_details = ApplicantProfileSerializer(
-        source='pathfinder.profile.pathfinder_extra',
+        source='pathfinder',
         read_only=True
     )
 

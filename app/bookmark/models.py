@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings 
 from opportunities.models import Opportunity
+from profiles.models import PathfinderProfileExtra
 
 # Create your models here.
 class Bookmark(models.Model):
@@ -22,7 +23,7 @@ class BookmarkUser(models.Model):
     )
     
     pathfinder = models.ForeignKey(      # the person being bookmarked
-        settings.AUTH_USER_MODEL, 
+        PathfinderProfileExtra, 
         on_delete=models.CASCADE, 
         related_name='favorited_by'
     )
