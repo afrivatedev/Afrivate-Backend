@@ -284,13 +284,6 @@ SIMPLE_JWT = {
     'TOKEN_OBTAIN_SERIALIZER': 'user_database.serializers.CustomTokenObtainPairSerializer',
 }
 
-# RAW_ORIGINS = os.environ.get("TRUSTED_ORIGINS", "http://localhost:3000").split(",")
-# CORS_ALLOWED_ORIGINS = RAW_ORIGINS
-# CSRF_TRUSTED_ORIGINS = RAW_ORIGINS
-# SECURE_SSL_REDIRECT = True
-# SESSION_COOKIE_SECURE = True
-# CSRF_COOKIE_SECURE = True
-
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000", # local frontend
     'https://afrivate-tech.github.io',
@@ -388,3 +381,28 @@ CLOUDINARY_STORAGE = {
     'API_KEY': os.getenv("CLOUDINARY_API_KEY"),
     'API_SECRET': os.getenv("CLOUDINARY_API_SECRET")
 }
+
+# # redis configuration for caching and rate limiting
+
+# REDIS_URL = os.getenv('REDIS_URL', 'redis://127.0.0.1:6379/1')
+
+# CACHES = {
+#     "default": {
+#         "BACKEND": "django_redis.cache.RedisCache",
+#         "LOCATION": REDIS_URL,
+#         "OPTIONS": {
+#             "CLIENT_CLASS": "django_redis.client.DefaultClient",
+#         }
+#     }
+# }
+
+# # celery configuration for background tasks (like sending emails, processing notifications, etc.)
+
+# CELERY_BROKER_URL = REDIS_URL
+# CELERY_RESULT_BACKEND = REDIS_URL
+
+# # Optional settings
+# # CELERY_ACCEPT_CONTENT = ['json']
+# # CELERY_TASK_SERIALIZER = 'json'
+# # CELERY_RESULT_SERIALIZER = 'json'
+# CELERY_TIMEZONE = 'Africa/Lagos' # Or your local timezone
