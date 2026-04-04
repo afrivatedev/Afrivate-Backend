@@ -1,7 +1,5 @@
 from rest_framework import serializers
 
-from app.profiles.models import PathfinderProfileExtra
-
 from .models import Bookmark, BookmarkUser
 from opportunities.models import Opportunity
 from opportunities.serializers import OpportunitySerializer
