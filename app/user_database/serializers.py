@@ -8,6 +8,10 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from django.contrib.auth.password_validation import validate_password
 from django.db import transaction
 
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
+from django.conf import settings
+
 import logging
 
 # Create your serializers here.
@@ -60,9 +64,25 @@ class CustomUserLoginSerializer(serializers.Serializer):
         user = authenticate(email_or_username=username_or_email, password=password)
 
         if not user:
+            try:
+                existing_user = CustomUser.objects.get(
+                    email=username_or_email
+                )
+                if existing_user.auth_provider == 'google':
+                    raise serializers.ValidationError(
+                        "This account was created with Google. "
+                        "Please use Google login or set a password first via /api/auth/set-password/."
+                    )
+            except CustomUser.DoesNotExist:
+                pass
             raise serializers.ValidationError("Invalid login credentials.")
         if not user.is_active:
             raise serializers.ValidationError("User account is disabled.")
+        
+        if not user.is_email_verified:
+            raise serializers.ValidationError(
+                "Email not verified. Please check your inbox for the OTP."
+            )
 
         # Store user in context for use in the view
         data['user'] = user
@@ -89,6 +109,7 @@ class ForgotPasswordSerializer(serializers.Serializer):
             
         except CustomUser.DoesNotExist:
             return email
+        
 
 class ResetPasswordSerializer(serializers.Serializer):
     uid = serializers.CharField()  # what is uid here?
@@ -285,3 +306,70 @@ class VerifyRegistrationOTPSerializer(serializers.Serializer):
             })
             
         return attrs 
+    
+class VerifyPasswordResetOTPSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    otp = serializers.CharField(max_length=6)
+
+    def validate(self, attrs):
+        email = attrs.get('email').lower().strip()
+        otp = attrs.get('otp')
+
+        verification = EmailVerification.objects.filter(
+            email=email,
+            token=otp,
+            verification_type='password_reset',  
+            is_verified=False
+        ).order_by('-created_at').first()
+
+        if not verification:
+            raise serializers.ValidationError({
+                'otp': 'Invalid or incorrect OTP code.'
+            })
+
+        if verification.is_expired():
+            raise serializers.ValidationError({
+                'otp': 'OTP has expired. Please request a new one.'
+            })
+
+        try:
+            user = CustomUser.objects.get(email=email)
+            attrs['verification'] = verification
+            attrs['user'] = user
+
+        except CustomUser.DoesNotExist:
+            raise serializers.ValidationError({
+                'email': 'User not found.'
+            })
+
+        return attrs
+    
+
+class GoogleAuthSerializer(serializers.Serializer):
+    token = serializers.CharField()  
+
+    def validate_token(self, value):
+        try:
+            id_info = id_token.verify_oauth2_token(
+                value,
+                google_requests.Request(),
+                settings.GOOGLE_CLIENT_ID,
+                clock_skew_in_seconds=10
+            )
+
+            if id_info.get('iss') not in ['accounts.google.com', 'https://accounts.google.com']:
+                raise serializers.ValidationError('Invalid token issuer.')
+
+            self.id_info = id_info
+            return value
+
+        except ValueError as e:
+            raise serializers.ValidationError(f'Invalid Google token: {str(e)}')
+
+    def get_user_data(self):
+        return {
+            'email': self.id_info.get('email'),
+            'first_name': self.id_info.get('given_name', ''),
+            'last_name': self.id_info.get('family_name', ''),
+            'username': self.id_info.get('email').split('@')[0],
+        }

@@ -23,5 +23,10 @@ urlpatterns = [
     
     path('verify-otp/', OtpVerifyView.as_view(), name='verify-otp'),  # new path for verifying OTP
     path('verify-email/', VerifyEmailView.as_view(), name='verify-email'),
+    path('verify-password-reset-otp/', VerifyPasswordResetOtpView.as_view(), name='verify-password-reset-otp'),
+
+    path('google/pathfinder/', GoogleLoginView.as_view(), {'role': 'pathfinder'}, name='google-pathfinder'),
+    path('google/enabler/', GoogleLoginView.as_view(), {'role': 'enabler'}, name="google-enabler"),
+    path('set-password/', SetPasswordView.as_view(), name='set-password'),
 ]
     

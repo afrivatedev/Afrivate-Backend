@@ -5,7 +5,6 @@ from django.utils.http import urlsafe_base64_decode
 from django.http import HttpResponse, HttpResponseRedirect
 from django.contrib.auth.tokens import default_token_generator
 from django.conf import settings
-from django.core.mail import send_mail
 
 from rest_framework import generics, status
 from rest_framework.views import APIView
@@ -16,7 +15,13 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from user_database.models import CustomUser, EmailVerification
 from user_database.serializers import *
 
-from .utils import sendotp_via_email
+from django.contrib.auth import get_user_model
+from user_database.serializers import GoogleAuthSerializer
+from django.contrib.auth.password_validation import validate_password
+
+from .utils import sendotp_via_email, send_signup_otp_email, send_welcome_email
+
+User = get_user_model()
 
 # Create your views here.
 def index(request):
@@ -31,9 +36,6 @@ class RegisterView(generics.CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True) # this would always run all the methods in the serializer
 
-        # verify user email validity
-
-
         user = serializer.save()
 
         verification, otp = EmailVerification.create_otp_verification(
@@ -43,20 +45,7 @@ class RegisterView(generics.CreateAPIView):
             expiry_minutes=10
         )
 
-        try:
-            send_mail(
-                subject="Verify your Afrivate Account",
-                message=f"Hello {user.first_name or user.username},\n\nYour registration was successful. "
-                        f"Your One-Time Password (OTP) is: {otp}\n\n"
-                        f"This code will expire in 10 minutes.",
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[user.email],
-                fail_silently=False,
-            )
-            logging.info(f"Registration OTP sent to {user.email}")
-        except Exception as e:
-            logging.error(f"Failed to send Registration OTP to {user.email}: {e}")
-
+        send_signup_otp_email(user.email, otp, user.username)
 
         return Response({
             #"id": user.id,
@@ -129,10 +118,10 @@ class ForgotPasswordView(generics.GenericAPIView):
                 expiry_minutes=10
             )
             
-            email_sent = sendotp_via_email(user.email) # ........
+            email_sent = sendotp_via_email(user.email, otp, user.username) # ........
             
             if email_sent:
-                logger.info(f"Password reset OTP sent to {email}")
+                logging.info(f"Password reset OTP sent to {email}")
                 return Response({
                     "success": True,
                     "message": "If the email exists, a password reset code has been sent."
@@ -147,6 +136,27 @@ class ForgotPasswordView(generics.GenericAPIView):
             logging.warning(f"Password reset requested for a non existent user with non-existent email-> {email}")
 
         return Response({"message": "If the email exists, a password reset link has been sent."}, status=status.HTTP_200_OK)
+    
+class VerifyPasswordResetOtpView(generics.GenericAPIView):
+    serializer_class = VerifyPasswordResetOTPSerializer
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        verification = serializer.validated_data['verification']
+        user = serializer.validated_data['user']
+
+        verification.mark_verified()
+
+        logging.info(f"Password reset OTP verified for {user.email}")
+
+        return Response({
+            "success": True,
+            "message": "OTP verified. You may now reset your password.",
+            "uid": user.pk,
+        }, status=status.HTTP_200_OK)
 
 # password reset view
 class ResetPasswordView(generics.GenericAPIView):
@@ -160,8 +170,6 @@ class ResetPasswordView(generics.GenericAPIView):
         uid = serializer.validated_data['uid']
         token = serializer.validated_data['token']
         password = serializer.validated_data['password']
-        # Generate JWT token
-        user.tokens()  # to create tokens method in model
         
         try:
             # Decode token to get user 
@@ -323,3 +331,100 @@ class VerifyEmailView(generics.GenericAPIView):
             'success': False,
             'message': serializer.errors.get('token', ['Invalid token'])[0]
         }, status=status.HTTP_400_BAD_REQUEST)
+
+# Google Login
+class GoogleLoginView(generics.GenericAPIView):
+    permission_classes = [AllowAny]
+    serializer_class = GoogleAuthSerializer
+
+    def post(self, request, role='pathfinder', *args, **kwargs):
+        if role not in ['pathfinder', 'enabler']:
+            return Response(
+                {"error": "Invalid role. Must be 'pathfinder' or 'enabler'."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user_data = serializer.get_user_data()
+        email = user_data['email']
+
+        try:
+            # Existing user — just log them in, don't change their role
+            user = User.objects.get(email=email)
+            logging.info(f"Existing user logged in via Google: {email}")
+
+        except User.DoesNotExist:
+            username = user_data['username']
+
+            base_username = username
+            counter = 1
+            while User.objects.filter(username=username).exists():
+                username = f"{base_username}{counter}"
+                counter += 1
+
+            user = User.objects.create_user(
+                email=email,
+                username=username,
+                first_name=user_data['first_name'],
+                last_name=user_data['last_name'],
+                role=role,
+                is_email_verified=True,  
+                auth_provider='google',
+            )
+            logging.info(f"New user created via Google: {email} with role {role}")
+
+        tokens = user.tokens()
+
+        return Response({
+            "message": "Google login successful.",
+            "user": {
+                "email": user.email,
+                "username": user.username,
+                "role": user.role,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "is_email_verified": user.is_email_verified,
+            },
+            "access": tokens['access_token'],
+            "refresh": tokens['refresh_token'],
+        }, status=status.HTTP_200_OK)
+
+class SetPasswordView(generics.GenericAPIView):
+    """Allows Google-authenticated users to set a password 
+    so they can also use normal email/password login"""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        user = request.user
+
+        new_password = request.data.get('new_password')
+        confirm_password = request.data.get('confirm_password')
+
+        if not new_password or not confirm_password:
+            return Response(
+                {"error": "new_password and confirm_password are required."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if new_password != confirm_password:
+            return Response(
+                {"error": "Passwords do not match."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            validate_password(new_password, user)
+        except Exception as e:
+            return Response({"error": list(e.messages)}, status=status.HTTP_400_BAD_REQUEST)
+
+        user.set_password(new_password)
+        user.auth_provider = 'email' 
+        user.save()
+
+        logging.info(f"Password set for Google user {user.email}")
+        return Response(
+            {"message": "Password set successfully. You can now login with email and password."},
+            status=status.HTTP_200_OK
+        )
