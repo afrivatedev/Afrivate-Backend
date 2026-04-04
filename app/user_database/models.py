@@ -21,6 +21,14 @@ class CustomUser(AbstractUser):
     
     # verifying email
     is_email_verified = models.BooleanField(default=False)
+    auth_provider = models.CharField(
+        max_length=20,
+        default='email',
+        choices=(
+            ('email', 'Email'),
+            ('google', 'Google'),
+        )
+    )
 
     # Field to store the OTP secret key
     # # otp_secret_key = models.CharField(max_length=32, null=True, blank=True)
