@@ -19,7 +19,8 @@ class CustomAuthenticationBackend(ModelBackend):
         try:
             # Try to fetch the user by email
             user = User.objects.get(
-                Q(email=email_or_username) | Q(username=email_or_username)
+                Q(email__iexact=email_or_username) | 
+                Q(username__iexact=email_or_username)
             )
             logging.info(f"User found for authentication: {email_or_username}")
             
