@@ -1,9 +1,12 @@
 from rest_framework import serializers
 
+from app.profiles.models import PathfinderProfileExtra
+
 from .models import Bookmark, BookmarkUser
 from opportunities.models import Opportunity
 from opportunities.serializers import OpportunitySerializer
 from profiles.serializers import ApplicantProfileSerializer
+from profiles.models import PathfinderProfileExtra
 
 from django.contrib.auth import get_user_model
 
@@ -11,9 +14,11 @@ User = get_user_model()
 
 # write serializers here
 class BookmarkUserSerializer(serializers.ModelSerializer):
-    # Write: accept a pathfinder's USER pk
+    # Write: accept a pathfinder's profile extra pk to bookmark them
+
     pathfinder_id = serializers.PrimaryKeyRelatedField(
-        queryset=User.objects.filter(profile__pathfinder_extra__isnull=False),
+        queryset=PathfinderProfileExtra.objects.all(),  
+        # queryset=User.objects.filter(profile__pathfinder_extra__isnull=False),
         source='pathfinder',
         write_only=True
     )
