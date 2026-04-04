@@ -165,9 +165,9 @@ class EnablerProfileSerializer(BaseProfileSerializer):
 
 
 class PathfinderProfileSerializer(BaseProfileSerializer):
-    skills = SkillSerializer(source="pathfinder.skills", many=True, required=False)
-    educations = EducationSerializer(source="profile.educations", many=True, required=False)
-    certifications = CertificationSerializer(source="pathfinder.certifications", many=True, required=False)
+    skills = SkillSerializer(source="pathfinder_skills", many=True, required=False)
+    educations = EducationSerializer(source="pathfinder_education", many=True, required=False)
+    certifications = CertificationSerializer(source="pathfinder_certifications", many=True, required=False)
     credentials = CredentialSerializer(source="profile.credentials", many=True, read_only=True)  # ← add this
 
     class Meta:
@@ -189,9 +189,9 @@ class PathfinderProfileSerializer(BaseProfileSerializer):
         user = self.context["request"].user
         base_details_data = validated_data.pop("profile", None)
         social_links_data = validated_data.pop("social_links", None)
-        skills_data = validated_data.pop("skills", [])
-        educations_data = validated_data.pop("educations", [])
-        certifications_data = validated_data.pop("certifications", [])
+        skills_data = validated_data.pop("pathfinder_skills", [])
+        educations_data = validated_data.pop("pathfinder_education", [])
+        certifications_data = validated_data.pop("pathfinder_certifications", [])
 
         if base_details_data is None:
             raise serializers.ValidationError("Profile data is required to create Pathfinder profile.")
@@ -215,9 +215,9 @@ class PathfinderProfileSerializer(BaseProfileSerializer):
         return pathfinder_extra
 
     def update(self, instance, validated_data):
-        skills_data = validated_data.pop("skills", None)
-        educations_data = validated_data.pop("educations", None)
-        certifications_data = validated_data.pop("certifications", None)
+        skills_data = validated_data.pop("pathfinder_skills", None)
+        educations_data = validated_data.pop("pathfinder_education", None)
+        certifications_data = validated_data.pop("pathfinder_certifications", None)
 
         instance = super().update(instance, validated_data)
 
