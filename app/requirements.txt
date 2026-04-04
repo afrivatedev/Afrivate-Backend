@@ -72,4 +72,6 @@ whitenoise>=6.11.0, <7.0
 cloudinary>= 1.44.1, <1.45
 django-cloudinary-storage>= 0.3.0, <0.4
 
+redis
+django-redis
 google-auth
