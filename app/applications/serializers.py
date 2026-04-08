@@ -27,7 +27,7 @@ class ApplicationSerializer(serializers.ModelSerializer):
     def get_pathfinder_profile(self, obj):
         # Fetch the PathfinderExtra related to the user who applied
         try:
-            extra = PathfinderProfileExtra.objects.select_related('profile__user').prefetch_related(
+            extra = PathfinderProfileExtra.objects.select_related('profile__user').prefetch_related(   # prefetch related to optimize queries 
                 'profile__social_links', 'profile__credentials',
                 'pathfinder_skills', 'pathfinder_education',
                 'pathfinder_certifications'
