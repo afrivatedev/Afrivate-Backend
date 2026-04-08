@@ -47,10 +47,7 @@ class RegisterView(generics.CreateAPIView):
                     user=user,
                     expiry_minutes=10
                 )
-
-                email_sent = send_signup_otp_email(user.email, otp, user.username)
-                if not email_sent:
-                    raise Exception("Failed to send OTP email")  # rolls back user + verification
+                send_signup_otp_email(user.email, otp, user.username)
 
         except Exception as e:
             logging.error(f"Registration failed: {e}")
