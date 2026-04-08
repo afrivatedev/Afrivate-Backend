@@ -17,9 +17,10 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from user_database.models import CustomUser, EmailVerification
 from user_database.serializers import *
 # from user_database.serializers import GoogleAuthSerializer # no need
-from django.contrib.auth.password_validation import validate_password # yoo all these checks should be at the serializer level, not here, need to move it there
 
 from .utils import sendotp_via_email, send_signup_otp_email, send_welcome_email
+
+from datetime import timedelta
 
 User = get_user_model()
 
@@ -285,37 +286,83 @@ class OtpVerifyView(generics.GenericAPIView):
         }, status=status.HTTP_200_OK)
 
 # we need a resend otp view, in case user doesn't receive the mail or the otp expires, they can request for a new otp to be sent, we should invalidate the old otp and create a new one and send it, but we should not allow unlimited resends, maybe max 3 resends allowed, after that they have to wait for some time before requesting again, we can track this using a field in the EmailVerification model that counts the number of resends and the timestamp of the last resend, if they exceed the limit, we can return an error message asking them to wait before requesting again.
-# class ResendOtpView(generics.GenericAPIView):
-#     permission_classes = [AllowAny]
+class ResendOtpView(generics.GenericAPIView):
+    permission_classes = [AllowAny]
 
-#     def post(self, request, *args, **kwargs):
-#         email = request.data.get('email', '').lower().strip()
+    def post(self, request, *args, **kwargs):
+        from django.utils import timezone
+
+        email = request.data.get('email', '').lower().strip()
+
+        if not email:
+            return Response(
+                {"error": "Email is required."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         
-#         try:
-#             user = CustomUser.objects.get(email=email)
-#         except CustomUser.DoesNotExist:
-#             # Don't reveal whether email exists
-#             return Response({"message": "If this email is registered, a new OTP has been sent."}, status=200)
+        try:
+            user = CustomUser.objects.get(email=email)
+        except CustomUser.DoesNotExist:
+            # Don't reveal whether email exists
+            return Response(
+                {"message": "If this email is registered, a new OTP has been sent."}, 
+                status=status.HTTP_200_OK
+            )
 
-#         if user.is_email_verified:
-#             return Response({"error": "This account is already verified."}, status=400)
+        if user.is_email_verified:
+            return Response(
+                {"error": "This account is already verified."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        latest = EmailVerification.objects.filter(
+            email=email,
+            verification_type = 'user_signup',
+            is_verified = False
+        ).order_by('-created_at').first()
 
-#         # Invalidate old OTPs
-#         EmailVerification.objects.filter(
-#             email=email,
-#             verification_type='user_signup',
-#             is_verified=False
-#         ).update(expires_at=timezone.now())  # expire them all
+        MAX_RESENDS = 3
+        COOLDOWN_MINUTES = 30
 
-#         verification, otp = EmailVerification.create_otp_verification(
-#             email=email,
-#             verification_type='user_signup',
-#             user=user,
-#             expiry_minutes=10
-#         )
-#         send_signup_otp_email(email, otp, user.username)
+        if latest:
+            if latest.resend_count >= MAX_RESENDS:
+                if latest.last_resend_at:
+                    cooldown_end = latest.last_resend_at + timedelta(minutes=COOLDOWN_MINUTES)
+                    if timezone.now() < cooldown_end:
+                        wait_minutes = int((cooldown_end - timezone.now()).seconds / 60) + 1
+                        return Response({
+                            "error": f"Too many OTP requests. Please wait {wait_minutes} minutes before trying again."
+                        }, status=status.HTTP_429_TOO_MANY_REQUESTS)
+                    else:
+                        latest.resend_count = 0
+                        latest.save()
 
-#         return Response({"message": "If this email is registered, a new OTP has been sent."}, status=200)
+        # Invalidate old OTPs
+        EmailVerification.objects.filter(
+            email=email,
+            verification_type='user_signup',
+            is_verified=False
+        ).update(expires_at=timezone.now())  # expire them all
+
+        verification, otp = EmailVerification.create_otp_verification(
+            email=email,
+            verification_type='user_signup',
+            user=user,
+            expiry_minutes=10
+        )
+
+        verification.resend_count = (latest.resend_count + 1) if latest else 1
+        verification.last_resend_at = timezone.now()
+        verification.save()
+
+        send_signup_otp_email(email, otp, user.username)
+
+        logging.info(f"OTP resent to {email}, resend count: {verification.resend_count}")
+
+        return Response(
+            {"message": "If this email is registered, a new OTP has been sent."}, 
+            status=status.HTTP_200_OK
+        )
 
 # verify email view    
 class VerifyEmailView(generics.GenericAPIView):
@@ -436,32 +483,15 @@ class SetPasswordView(generics.GenericAPIView):
     """Allows Google-authenticated users to set a password 
     so they can also use normal email/password login"""
     permission_classes = [IsAuthenticated]
+    serializer_class = SetPasswordSerializer
 
     def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
         user = request.user
-
-        new_password = request.data.get('new_password')
-        confirm_password = request.data.get('confirm_password')
-
-        if not new_password or not confirm_password:
-            return Response(
-                {"error": "new_password and confirm_password are required."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        if new_password != confirm_password:
-            return Response(
-                {"error": "Passwords do not match."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        try:
-            validate_password(new_password, user)
-        except Exception as e:
-            return Response({"error": list(e.messages)}, status=status.HTTP_400_BAD_REQUEST)
-
-        user.set_password(new_password)
-        user.auth_provider = 'email' 
+        user.set_password(serializer.validated_data['new_password'])
+        user.auth_provider = 'email'
         user.save()
 
         logging.info(f"Password set for Google user {user.email}")
