@@ -1,12 +1,15 @@
 import logging
+import resend
+
 from django.core.mail import send_mail # , EmailMessage
 from django.conf import settings
 
-import resend
+from celery import shared_task
 
 resend.api_key = settings.RESEND_API_KEY
 
-def send_signup_otp_email(email, otp, username="User"):
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def send_signup_otp_email(self, email, otp, username="User"):
     """Send OTP email for new user registration"""
     message = f"""
     Dear {username},
@@ -32,12 +35,10 @@ def send_signup_otp_email(email, otp, username="User"):
     
     except Exception as e:
         logging.error(f"Failed to send signup OTP to {email}: {e}")
-        return False
-    
-# hey let's use RESEND for all our email sending needs
+        raise self.retry(exc=e)  # Celery will retry up to 3 times
 
-# send email then receive otp input and verify 
-def sendotp_via_email(email, otp, username="User"):
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def sendotp_via_email(self, email, otp, username="User"):
     """Send OTP to the specified email address""" 
 
     message = f"""
@@ -64,13 +65,10 @@ def sendotp_via_email(email, otp, username="User"):
     
     except Exception as e:
         logging.error(f"Failed to send password reset OTP to {email}: {e}")
-        return False
+        raise self.retry(exc=e)  
     
-
-# Send a confirmation email once verification is there
-
-
-def send_welcome_email(email, name="User"):
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def send_welcome_email(self, email, name="User"):
     """Send welcome email after email is verified"""
 
     message = f"""
@@ -92,4 +90,4 @@ def send_welcome_email(email, name="User"):
     
     except Exception as e:
         logging.error(f"Failed to send welcome email to {email}: {e}")
-        return False
+        raise self.retry(exc=e)  
