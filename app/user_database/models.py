@@ -85,6 +85,8 @@ class EmailVerification(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField()
     verified_at = models.DateTimeField(null=True, blank=True)
+    resend_count = models.IntegerField(default=0)
+    last_resend_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return f"{self.email} - {self.verification_type} - {'Verified' if self.is_verified else 'Pending'}"
