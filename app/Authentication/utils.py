@@ -39,27 +39,29 @@ def send_signup_otp_email(email, otp, username="User"):
 # send email then receive otp input and verify 
 def sendotp_via_email(email, otp, username="User"):
     """Send OTP to the specified email address""" 
-    subject = 'Password Reset OTP - Afrivate'
+
     message = f"""
-Dear {username},
+    Dear {username},
 
-You requested a password reset. 
+    You requested a password reset. 
 
-Your OTP is: {otp}
+    Your OTP is: {otp}
 
-This otp will expire in 10 minutes.
-If you didn't request this, please ignore this email.
-    """
+    This otp will expire in 10 minutes.
+    If you didn't request this, please ignore this email.
+        """
+    
     try:
-        send_mail(
-            subject=subject,
-            message=message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[email],
-            fail_silently=False,
-        )
-        logging.info(f"Password reset OTP sent to {email}")
+        params: resend.Emails.SendParams = {
+            "from": settings.DEFAULT_FROM_EMAIL,
+            "to": [email],
+            "subject": "Password Reset OTP - Afrivate",
+            "html": f"<p>{message}</p>",
+        }
+        email = resend.Emails.send(params)
+        logging.info(f"Password reset OTP sent to {email}")  
         return True
+    
     except Exception as e:
         logging.error(f"Failed to send password reset OTP to {email}: {e}")
         return False
@@ -70,22 +72,24 @@ If you didn't request this, please ignore this email.
 
 def send_welcome_email(email, name="User"):
     """Send welcome email after email is verified"""
-    subject = 'Welcome to Afrivate!'
-    message = f"""
-Dear {name},
 
-Your email has been verified. Welcome to Afrivate!
-    """
+    message = f"""
+    Dear {name},
+
+    Your email has been verified. Welcome to Afrivate!
+        """
     try:
-        send_mail(
-            subject=subject,
-            message=message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[email],
-            fail_silently=False,
-        )
+        params: resend.Emails.SendParams = {
+            "from": settings.DEFAULT_FROM_EMAIL,
+            "to": [email],
+            "subject": "Welcome to Afrivate!",
+            "html": f"<p>{message}</p>",
+        }
+
+        email = resend.Emails.send(params)
         logging.info(f"Welcome email sent to {email}")
         return True
+    
     except Exception as e:
         logging.error(f"Failed to send welcome email to {email}: {e}")
         return False

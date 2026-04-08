@@ -126,7 +126,6 @@ class ForgotPasswordView(generics.GenericAPIView):
             email_sent = sendotp_via_email(user.email, otp, user.username)
             
             if email_sent:
-                logging.info(f"Password reset OTP sent to {email}")
                 return Response({
                     "success": True,
                     "message": "If the email exists, a password reset code has been sent."
