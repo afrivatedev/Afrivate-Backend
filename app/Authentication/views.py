@@ -61,9 +61,7 @@ class RegisterView(generics.CreateAPIView):
             "user": {
                 "username": user.username,
                 "email": user.email,
-                "role": user.role,
-                "first_name": user.first_name,
-                "last_name": user.last_name
+                "role": user.role
             }
         }, status=status.HTTP_201_CREATED)
 
@@ -92,8 +90,6 @@ class LoginView(generics.GenericAPIView):
                 "username": user.username,
                 "email": user.email,
                 "role": user.role,  
-                "first_name": user.first_name,
-                "last_name": user.last_name
             },
             "refresh": tokens['refresh_token'],
             "access": tokens['access_token']
@@ -116,7 +112,7 @@ class ForgotPasswordView(generics.GenericAPIView):
             if not user.is_email_verified:
                 return Response({
                     "success": False,
-                    "message": "Please verify your email first."
+                    "message": "Please verify your email first." # i need an explanation for this, if email is not verified, how will they receive the password reset otp?  
                 }, status=status.HTTP_400_BAD_REQUEST)
             
             verification, otp = EmailVerification.create_otp_verification(
@@ -126,7 +122,7 @@ class ForgotPasswordView(generics.GenericAPIView):
                 expiry_minutes=10
             )
             
-            email_sent = sendotp_via_email(user.email, otp, user.username) # ........
+            email_sent = sendotp_via_email(user.email, otp, user.username)
             
             if email_sent:
                 logging.info(f"Password reset OTP sent to {email}")
@@ -247,7 +243,14 @@ class LogoutView(APIView):
 
 # user deletion view
 class DeleteUserView(generics.DestroyAPIView):  
-    pass  # Implementation goes here       
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, *args, **kwargs):
+        user = request.user
+        logging.info(f"User deletion requested for user {user.id}")
+        user.delete()
+        logging.info(f"User deleted successfully: {user.id}")
+        return Response({"message": "User account deleted successfully"}, status=status.HTTP_200_OK)   
 
 # otp verify view
 class OtpVerifyView(generics.GenericAPIView): 
@@ -284,38 +287,12 @@ class OtpVerifyView(generics.GenericAPIView):
             "access": str(tokens['access_token'])
         }, status=status.HTTP_200_OK)
 
-# we need a resend otp view, in case user doesn't receive the mail or the otp expires, they can request for a new otp to be sent, we should invalidate the old otp and create a new one and send it, but we should not allow unlimited resends, maybe max 3 resends allowed, after that they have to wait for some time before requesting again, we can track this using a field in the EmailVerification model that counts the number of resends and the timestamp of the last resend, if they exceed the limit, we can return an error message asking them to wait before requesting again.
-# class ResendOtpView(generics.GenericAPIView):
-#     permission_classes = [AllowAny]
-
-#     def post(self, request, *args, **kwargs):
-#         email = request.data.get('email', '').lower().strip()
-        
-#         try:
-#             user = CustomUser.objects.get(email=email)
-#         except CustomUser.DoesNotExist:
-#             # Don't reveal whether email exists
-#             return Response({"message": "If this email is registered, a new OTP has been sent."}, status=200)
-
-#         if user.is_email_verified:
-#             return Response({"error": "This account is already verified."}, status=400)
-
-#         # Invalidate old OTPs
-#         EmailVerification.objects.filter(
-#             email=email,
-#             verification_type='user_signup',
-#             is_verified=False
-#         ).update(expires_at=timezone.now())  # expire them all
-
-#         verification, otp = EmailVerification.create_otp_verification(
-#             email=email,
-#             verification_type='user_signup',
-#             user=user,
-#             expiry_minutes=10
-#         )
-#         send_signup_otp_email(email, otp, user.username)
-
-#         return Response({"message": "If this email is registered, a new OTP has been sent."}, status=200)
+# we need a resend otp view, in case user doesn't receive the mail or the otp expires, they can request for a new otp to be sent, 
+# we should also invalidate the old otp and create a new one and send it, but we should not allow unlimited resends, maybe max 3 resends allowed, 
+# after that they have to wait for some time before requesting again, we can track this using a field in the EmailVerification model that counts the number of resends and the timestamp of the last resend,
+#  if they exceed the limit, we can return an error message asking them to wait before requesting again. 
+ 
+# also if we use a serializer for all the views below, we get the built-in field validation and ‘read-only’ protection and it'll be less messy to understand later on
 
 # verify email view    
 class VerifyEmailView(generics.GenericAPIView):
@@ -443,7 +420,7 @@ class SetPasswordView(generics.GenericAPIView):
         new_password = request.data.get('new_password')
         confirm_password = request.data.get('confirm_password')
 
-        if not new_password or not confirm_password:
+        if not new_password or not confirm_password: # all this logic realy shouldn't be here
             return Response(
                 {"error": "new_password and confirm_password are required."},
                 status=status.HTTP_400_BAD_REQUEST
