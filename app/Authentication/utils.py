@@ -2,33 +2,39 @@ import logging
 from django.core.mail import send_mail # , EmailMessage
 from django.conf import settings
 
+import resend
+
+resend.api_key = settings.RESEND_API_KEY
 
 def send_signup_otp_email(email, otp, username="User"):
     """Send OTP email for new user registration"""
-    subject = 'Verify your Afrivate Account'
     message = f"""
-Dear {username},
+    Dear {username},
 
-Welcome to Afrivate!
+    Welcome to Afrivate!
 
-Your OTP for email verification is: {otp}
+    Your OTP for email verification is: {otp}
 
-This OTP is valid for 10 minutes.
-If you did not create an account, please ignore this email.
-    """
+    This OTP is valid for 10 minutes.
+    If you did not create an account, please ignore this email.
+        """
     try:
-        send_mail(
-            subject=subject,
-            message=message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[email],
-            fail_silently=False,
-        )
+        params: resend.Emails.SendParams = {
+        "from": settings.DEFAULT_FROM_EMAIL,
+        "to": [email],
+        "subject": "Verify your Afrivate Account",
+        "html": f"<p>{message}</p>",
+        }
+
+        email = resend.Emails.send(params)
         logging.info(f"Signup OTP sent to {email}")
         return True
+    
     except Exception as e:
         logging.error(f"Failed to send signup OTP to {email}: {e}")
         return False
+    
+# hey let's use RESEND for all our email sending needs
 
 # send email then receive otp input and verify 
 def sendotp_via_email(email, otp, username="User"):

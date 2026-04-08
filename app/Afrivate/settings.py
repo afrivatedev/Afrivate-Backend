@@ -39,13 +39,13 @@ and set it as an environment variable.
 DEBUG = bool(int(os.environ.get("DEBUG","0"))) # set to 0 in production
 
 if DEBUG:
-    # Local deve
+    # Local development environment (localhost URLs)
     SITE_DOMAIN = "http://127.0.0.1:8000"
     FRONTEND_URL = "http://localhost:3000"
 else:
     # Production environment (Actual live URLs)
     SITE_DOMAIN = os.environ.get("SITE_DOMAIN",'https://afrivate-backend-production.up.railway.app')
-    FRONTEND_URL = os.environ.get("FRONTEND_URL",'https://afrivate.org')
+    FRONTEND_URL = os.environ.get("FRONTEND_URL",'https://afrivate-volunteer-module-frontend.vercel.app')
 
 ALLOWED_HOSTS = []
 ALLOWED_HOSTS.extend(
@@ -242,15 +242,17 @@ AUTHENTICATION_BACKENDS = [
 # SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
 # ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 
-EMAIL_BACKEND = os.getenv("DJANGO_EMAIL_BACKEND")
-EMAIL_HOST = "smtp.gmail.com" # this should head to env file
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
-EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
+# EMAIL_BACKEND = os.getenv("DJANGO_EMAIL_BACKEND")
+# EMAIL_HOST = "smtp.gmail.com" # this should head to env file
+# EMAIL_PORT = 587
+# EMAIL_USE_TLS = True
+# EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
+# EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL")
 
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+
+RESEND_API_KEY = os.getenv("RESEND_API_KEY")
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (

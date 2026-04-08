@@ -28,5 +28,7 @@ urlpatterns = [
     path('google/pathfinder/', GoogleLoginView.as_view(), {'role': 'pathfinder'}, name='google-pathfinder'),
     path('google/enabler/', GoogleLoginView.as_view(), {'role': 'enabler'}, name="google-enabler"),
     path('set-password/', SetPasswordView.as_view(), name='set-password'),
+
+    path('delete-account/', DeleteUserView.as_view(), name='delete-account'),
 ]
     
