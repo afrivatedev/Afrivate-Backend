@@ -239,15 +239,11 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 # Email configuration
-# EMAIL_BACKEND = os.getenv("DJANGO_EMAIL_BACKEND") # For Production purposes
 # SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
-# DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL")
-
-# SENDGRID_SANDBOX_MODE_IN_DEBUG = False
 # ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 
 EMAIL_BACKEND = os.getenv("DJANGO_EMAIL_BACKEND")
-EMAIL_HOST = "smtp.gmail.com"
+EMAIL_HOST = "smtp.gmail.com" # this should head to env file
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
@@ -276,7 +272,7 @@ SWAGGER_SETTINGS = {
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(hours=1), # to be changed to hours in production
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=1), # to be changed to weeks in production
+    'REFRESH_TOKEN_LIFETIME': timedelta(hours=6), # to be changed to weeks in production
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
     'AUTH_HEADER_TYPES': ('Bearer',),

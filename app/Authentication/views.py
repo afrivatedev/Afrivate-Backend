@@ -1,10 +1,12 @@
 import logging
 
+from django.contrib.auth import get_user_model
 from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
 from django.http import HttpResponse, HttpResponseRedirect
 from django.contrib.auth.tokens import default_token_generator
 from django.conf import settings
+from django.db import transaction
 
 from rest_framework import generics, status
 from rest_framework.views import APIView
@@ -14,10 +16,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from user_database.models import CustomUser, EmailVerification
 from user_database.serializers import *
-
-from django.contrib.auth import get_user_model
-from user_database.serializers import GoogleAuthSerializer
-from django.contrib.auth.password_validation import validate_password
+# from user_database.serializers import GoogleAuthSerializer # no need
+from django.contrib.auth.password_validation import validate_password # yoo all these checks should be at the serializer level, not here, need to move it there
 
 from .utils import sendotp_via_email, send_signup_otp_email, send_welcome_email
 
@@ -36,19 +36,30 @@ class RegisterView(generics.CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True) # this would always run all the methods in the serializer
 
-        user = serializer.save()
+        try:
+            with transaction.atomic():   # applying fix
+                user = serializer.save()
 
-        verification, otp = EmailVerification.create_otp_verification(
-            email=user.email,
-            verification_type='user_signup',
-            user=user,
-            expiry_minutes=10
-        )
+                # should wrap this up in a transaction, if email sending fails, we should rollback user creation
+                verification, otp = EmailVerification.create_otp_verification(
+                    email=user.email,
+                    verification_type='user_signup',
+                    user=user,
+                    expiry_minutes=10
+                )
 
-        send_signup_otp_email(user.email, otp, user.username)
+                email_sent = send_signup_otp_email(user.email, otp, user.username)
+                if not email_sent:
+                    raise Exception("Failed to send OTP email")  # rolls back user + verification
+
+        except Exception as e:
+            logging.error(f"Registration failed: {e}")
+            return Response(
+                {"error": "Registration failed. Please try again."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
         return Response({
-            #"id": user.id,
             "message": "User registered successfully. Please check your email for the OTP verification code.",
             "user": {
                 "username": user.username,
@@ -275,7 +286,40 @@ class OtpVerifyView(generics.GenericAPIView):
             "refresh": str(tokens['refresh_token']),
             "access": str(tokens['access_token'])
         }, status=status.HTTP_200_OK)
-    
+
+# we need a resend otp view, in case user doesn't receive the mail or the otp expires, they can request for a new otp to be sent, we should invalidate the old otp and create a new one and send it, but we should not allow unlimited resends, maybe max 3 resends allowed, after that they have to wait for some time before requesting again, we can track this using a field in the EmailVerification model that counts the number of resends and the timestamp of the last resend, if they exceed the limit, we can return an error message asking them to wait before requesting again.
+# class ResendOtpView(generics.GenericAPIView):
+#     permission_classes = [AllowAny]
+
+#     def post(self, request, *args, **kwargs):
+#         email = request.data.get('email', '').lower().strip()
+        
+#         try:
+#             user = CustomUser.objects.get(email=email)
+#         except CustomUser.DoesNotExist:
+#             # Don't reveal whether email exists
+#             return Response({"message": "If this email is registered, a new OTP has been sent."}, status=200)
+
+#         if user.is_email_verified:
+#             return Response({"error": "This account is already verified."}, status=400)
+
+#         # Invalidate old OTPs
+#         EmailVerification.objects.filter(
+#             email=email,
+#             verification_type='user_signup',
+#             is_verified=False
+#         ).update(expires_at=timezone.now())  # expire them all
+
+#         verification, otp = EmailVerification.create_otp_verification(
+#             email=email,
+#             verification_type='user_signup',
+#             user=user,
+#             expiry_minutes=10
+#         )
+#         send_signup_otp_email(email, otp, user.username)
+
+#         return Response({"message": "If this email is registered, a new OTP has been sent."}, status=200)
+
 # verify email view    
 class VerifyEmailView(generics.GenericAPIView):
     permission_classes = [AllowAny]
