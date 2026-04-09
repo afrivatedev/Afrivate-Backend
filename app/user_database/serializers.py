@@ -98,35 +98,26 @@ class ForgotPasswordSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
     def validate_email(self, value):
-        email = value.lower().strip()
-        
-        try:
-            user = CustomUser.objects.get(email=email)
-            if not user.is_email_verified:
-                raise serializers.ValidationError(
-                    "Please verify your email before resetting password."
-                )
-            return email
-            
-        except CustomUser.DoesNotExist:
-            return email
+        return value.lower().strip()
         
 
 class ResetPasswordSerializer(serializers.Serializer):
-    uid = serializers.CharField()  # what is uid here?
-    token = serializers.CharField()
-    password = serializers.CharField(
-        style={'input_type': 'password'}, write_only=True)
-    confirm_password = serializers.CharField(
-        style={'input_type': 'password'}, write_only=True)
+    uid = serializers.IntegerField() # user.pk from verify-password-reset-otp response 
+    new_password = serializers.CharField(write_only=True)
+    confirm_password = serializers.CharField(write_only=True)
 
+    def validate_new_password(self, value):
+        try:
+            validate_password(value)
+        except DjangoValidationError as e:
+            raise serializers.ValidationError(e.messages)
+        return value
+    
     def validate(self, data):
-        password = data.get('password')
-        confirm_password = data.get('confirm_password')
-
-        if password != confirm_password:
+        if data['new_password'] != data['confirm_password']:
             raise serializers.ValidationError(
-                {"password": "Passwords do not match"}, code=status.HTTP_400_BAD_REQUEST)
+                {"confirm_password": "Passwords do not match."}
+            )
         return data
 
 
