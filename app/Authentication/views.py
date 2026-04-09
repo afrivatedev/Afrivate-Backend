@@ -143,7 +143,7 @@ class ForgotPasswordView(generics.GenericAPIView):
                 expiry_minutes=10
             )
             
-            email_sent = sendotp_via_email.delay(user.email, otp, user.username)
+            email_sent = sendotp_via_email(user.email, otp, user.username)
             
             if email_sent:
                 logging.info(f"Password reset OTP sent to {email}")
@@ -370,7 +370,7 @@ class ResendOtpView(generics.GenericAPIView):
         verification.last_resend_at = timezone.now()
         verification.save()
 
-        send_signup_otp_email.delay(email, otp, user.username)
+        send_signup_otp_email(email, otp, user.username)
 
         logging.info(f"OTP resent to {email}, resend count: {verification.resend_count}")
 
@@ -397,7 +397,7 @@ class VerifyEmailView(generics.GenericAPIView):
                 verification = serializer.verify()
                 logging.info(f"Email verified successfully for {verification.email}")
                 
-                send_welcome_email.delay(verification.email, verification.waitlist_email.name if hasattr(verification, 'waitlist_email') else "")
+                send_welcome_email(verification.email, verification.waitlist_email.name if hasattr(verification, 'waitlist_email') else "")
                 
                 return HttpResponseRedirect(f"{settings.FRONTEND_URL}/verify-success")
                 
