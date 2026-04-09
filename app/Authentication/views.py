@@ -99,8 +99,12 @@ class LoginView(generics.GenericAPIView):
 # password forgot view
 class ForgotPasswordView(generics.GenericAPIView):
     serializer_class = ForgotPasswordSerializer
+    permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
+        from django.utils import timezone
+
+
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         email = serializer.validated_data['email']
@@ -111,9 +115,25 @@ class ForgotPasswordView(generics.GenericAPIView):
 
             # Check if email is verified
             if not user.is_email_verified:
+
+                EmailVerification.objects.filter(
+                    email=email,
+                    verification_type='user_signup',
+                    is_verified=False
+                ).update(expires_at=timezone.now())
+
+                verification, otp = EmailVerification.create_otp_verification(
+                    email=email,
+                    verification_type='user_signup',
+                    user=user,
+                    expiry_minutes=10
+                )
+                send_signup_otp_email(email, otp, user.username)
+                logging.info(f"Unverified user {email} requested password reset - sent signup OTP")
+
                 return Response({
                     "success": False,
-                    "message": "Please verify your email first." # i need an explanation for this, if email is not verified, how will they receive the password reset otp?  
+                    "message": "Your email is not verified. We've sent a new verification OTP to your email. Please verify first." # i need an explanation for this, if email is not verified, how will they receive the password reset otp?  
                 }, status=status.HTTP_400_BAD_REQUEST)
             
             verification, otp = EmailVerification.create_otp_verification(
@@ -123,9 +143,10 @@ class ForgotPasswordView(generics.GenericAPIView):
                 expiry_minutes=10
             )
             
-            email_sent = sendotp_via_email.delay(user.email, otp, user.username)
+            email_sent = sendotp_via_email(user.email, otp, user.username)
             
             if email_sent:
+                logging.info(f"Password reset OTP sent to {email}")
                 return Response({
                     "success": True,
                     "message": "If the email exists, a password reset code has been sent."
@@ -137,9 +158,9 @@ class ForgotPasswordView(generics.GenericAPIView):
                 }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             
         except CustomUser.DoesNotExist:
-            logging.warning(f"Password reset requested for a non existent user with non-existent email-> {email}")
+            logging.warning(f"Password reset requested for non-existent email: {email}")
 
-        return Response({"message": "If the email exists, a password reset link has been sent."}, status=status.HTTP_200_OK)
+        return Response({"message": "If the email exists, a password reset code has been sent."}, status=status.HTTP_200_OK)
     
 class VerifyPasswordResetOtpView(generics.GenericAPIView):
     serializer_class = VerifyPasswordResetOTPSerializer
@@ -165,39 +186,31 @@ class VerifyPasswordResetOtpView(generics.GenericAPIView):
 # password reset view
 class ResetPasswordView(generics.GenericAPIView):
     serializer_class = ResetPasswordSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
     
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         uid = serializer.validated_data['uid']
-        token = serializer.validated_data['token']
-        password = serializer.validated_data['password']
+        new_password = serializer.validated_data['new_password']
         
         try:
-            # Decode token to get user 
-            user_id = force_str(urlsafe_base64_decode(uid))
-            user = CustomUser.objects.get(pk=user_id)
-
-            # For demo, let's assume token belongs to the first user
-            if default_token_generator.check_token(user, token):
-                user.set_password(password)
-                user.save()
-                return Response(
-                    {"message": "Password reset successful"}, 
-                    status=status.HTTP_200_OK
-                )
-            else:
-                return Response(
-                    {"error": "Invalid or expired token"}, 
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-        except (TypeError, ValueError, OverflowError, CustomUser.DoesNotExist):
+            user = CustomUser.objects.get(pk=uid)
+        except CustomUser.DoesNotExist:
             return Response(
-                {"error": "Invalid reset link"}, 
+                {"error": "Invalid user."}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
+        
+        user.set_password(new_password)
+        user.save()
+
+        logging.info(f"Password reset successfully for {user.email}")
+        return Response(
+            {"message": "Password reset successful. You can now login with your new password."},
+            status=status.HTTP_200_OK
+        )
 
 # user change password view
 class ChangePasswordView(generics.GenericAPIView):
@@ -357,7 +370,7 @@ class ResendOtpView(generics.GenericAPIView):
         verification.last_resend_at = timezone.now()
         verification.save()
 
-        send_signup_otp_email.delay(email, otp, user.username)
+        send_signup_otp_email(email, otp, user.username)
 
         logging.info(f"OTP resent to {email}, resend count: {verification.resend_count}")
 
@@ -384,7 +397,7 @@ class VerifyEmailView(generics.GenericAPIView):
                 verification = serializer.verify()
                 logging.info(f"Email verified successfully for {verification.email}")
                 
-                send_welcome_email.delay(verification.email, verification.waitlist_email.name if hasattr(verification, 'waitlist_email') else "")
+                send_welcome_email(verification.email, verification.waitlist_email.name if hasattr(verification, 'waitlist_email') else "")
                 
                 return HttpResponseRedirect(f"{settings.FRONTEND_URL}/verify-success")
                 
@@ -492,30 +505,7 @@ class SetPasswordView(generics.GenericAPIView):
         serializer.is_valid(raise_exception=True)
 
         user = request.user
-
-        new_password = request.data.get('new_password')
-        confirm_password = request.data.get('confirm_password')
-
-        if not new_password or not confirm_password: # all this logic realy shouldn't be here
-            return Response(
-                {"error": "new_password and confirm_password are required."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        if new_password != confirm_password:
-            return Response(
-                {"error": "Passwords do not match."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        try:
-            validate_password(new_password, user)
-        except Exception as e:
-            return Response({"error": list(e.messages)}, status=status.HTTP_400_BAD_REQUEST)
-
-        user.set_password(new_password)
-        user.auth_provider = 'email' 
-        user.set_password(serializer.validated_data['new_password'])
+        user.set_password(serializer.validated_data["new_password"])
         user.auth_provider = 'email'
         user.save()
 
