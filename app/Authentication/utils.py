@@ -59,7 +59,7 @@ def sendotp_via_email(self, email, otp, username="User"):
             "subject": "Password Reset OTP - Afrivate",
             "html": f"<p>{message}</p>",
         }
-        email = resend.Emails.send(params)
+        response = resend.Emails.send(params)
         logging.info(f"Password reset OTP sent to {email}")  
         return True
     
@@ -84,7 +84,7 @@ def send_welcome_email(self, email, name="User"):
             "html": f"<p>{message}</p>",
         }
 
-        email = resend.Emails.send(params)
+        response = resend.Emails.send(params)
         logging.info(f"Welcome email sent to {email}")
         return True
     
