@@ -26,6 +26,7 @@ def credential_file_path(instance, filename):
     return os.path.join(PROFILE_UPLOAD_PATH, 'credentials', f'user_{instance.profile.user.id}', filename)
 
 
+# ============= When null=false, blank=false... the signal creates a blank profile on registration cause it to crash on get_or_create unless those fields are provided.
 class Profile(models.Model):
     """Profile model. Base Fields shared by both Enabler and the Pathfinder"""
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,related_name="profile")
@@ -33,12 +34,12 @@ class Profile(models.Model):
     bio = models.TextField(max_length=150,null=True, blank=True)
     
     # contact and location
-    contact_email = models.EmailField(max_length=256, null=False, blank=False)
+    contact_email = models.EmailField(max_length=256, null=True, blank=True)
     phone_number = models.CharField(max_length=20,null=True, blank=True)
-    address = models.TextField(max_length=256,null=False, blank=False)
+    address = models.TextField(max_length=256,null=True, blank=True)
     # city = models.CharField(max_length=50, null=False, blank=False)
-    state = models.CharField(max_length=50,null=False, blank=False)
-    country = models.CharField(max_length=50,null=False, blank=False)
+    state = models.CharField(max_length=50,null=True, blank=True)
+    country = models.CharField(max_length=50,null=True, blank=True)
     
     website = models.URLField(max_length=256,null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

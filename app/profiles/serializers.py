@@ -137,12 +137,11 @@ class EnablerProfileSerializer(BaseProfileSerializer):
         exclude = ("profile",)
         read_only_fields = ("id",)
 
+
     def validate(self, attrs):
         user = self.context["request"].user
-        if self.instance is None and hasattr(user, "profile"):
-            raise serializers.ValidationError("Profile already exists for this user.")
         if user.role != "enabler":
-            raise serializers.ValidationError("Only users with Enabler role can create Enabler profiles.")
+            raise serializers.ValidationError("Only users with Enabler role can access Enabler profiles.")
         return attrs
 
     def create(self, validated_data):
@@ -177,11 +176,8 @@ class PathfinderProfileSerializer(BaseProfileSerializer):
 
     def validate(self, attrs):
         user = self.context["request"].user
-        if self.instance is None and hasattr(user, "profile"):
-            raise serializers.ValidationError("Profile already exists for this user.")
-
         if user.role != "pathfinder":
-            raise serializers.ValidationError("Only users with Pathfinder role can create Pathfinder profiles.")
+            raise serializers.ValidationError("Only users with Pathfinder role can access Pathfinder profiles.")
         return attrs
 
     @transaction.atomic
