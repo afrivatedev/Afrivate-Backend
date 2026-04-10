@@ -171,7 +171,8 @@ class EnablerViewSet(ListAPIView):
     "a model viewsets to view "
     serializer_class = EnablerProfileSerializer
     permission_classes =  (IsAuthenticated,)
-    authentication_classes = (JWTAuthentication)
+    # comma makes it a tuple
+    authentication_classes = (JWTAuthentication, )
 
     def get_queryset(self):
         """return organizations details for the logged-in user"""
