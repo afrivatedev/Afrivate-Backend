@@ -7,6 +7,13 @@ from datetime import timedelta
 class OpportunitySerializer(serializers.ModelSerializer):
     created_by_name = serializers.ReadOnlyField(source='created_by.username')
 
+    def get_created_by_name(self, obj):
+        try:
+            return obj.created_by.profile.enabler_extra.name
+        except Exception:
+            return obj.created_by.username
+        
+        
     class Meta:
         model = Opportunity
         fields = [
