@@ -12,7 +12,7 @@ class ApplicationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Application
         fields = ['id','user','user_name','pathfinder_profile',
-                'opportunity','opportunity_title', 'resume', 'status',
+                'opportunity','opportunity_title', 'resume', 'profile_resume', 'status',
                     'cover_letter', 'applied_at', 'reviewed_at', ]
         read_only_fields = ['status', 'user', 'applied_at', 'reviewed_at']
 
@@ -34,7 +34,7 @@ class ApplicationSerializer(serializers.ModelSerializer):
             ).get(profile__user=obj.user)
             
             return PathfinderProfileSerializer(extra, context=self.context).data
-        except PathfinderProfileSerializer.DoesNotExist:
+        except PathfinderProfileExtra.DoesNotExist:
             return None
 
     def validate(self, data):
