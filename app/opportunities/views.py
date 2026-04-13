@@ -2,6 +2,8 @@
 from django.http import HttpResponse, JsonResponse
 from django_filters.rest_framework import DjangoFilterBackend
 
+from rest_framework import status
+from rest_framework.response import Response
 from rest_framework.generics import ListCreateAPIView, ListAPIView, RetrieveAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import PermissionDenied, NotFound
@@ -51,10 +53,10 @@ class StandardResultsPagination(PageNumberPagination):
 
 # list all opportunities /api/opportunities/ GET {200}
 class OpportunityView(ListCreateAPIView):
-    queryset = Opportunity.objects.all().order_by('-posted_at')
+    queryset = Opportunity.objects.select_related('created_by').order_by('-posted_at')
     serializer_class = OpportunitySerializer 
     pagination_class = StandardResultsPagination
-    permission_classes = [IsAuthenticated, IsEnablerOrReadOnly] # Only enablers can create
+    permission_classes = [IsEnablerOrReadOnly] # Only enablers can create
     
     # Enable Search and Category Filtering
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
@@ -72,7 +74,7 @@ class EnablerOpportunityListView(ListAPIView):
 
     def get_queryset(self):
         # Only show opportunities created by the logged-in user
-        return Opportunity.objects.filter(created_by=self.request.user)
+        return Opportunity.objects.filter(created_by=self.request.user).select_related('created_by')
     
 # For the Pathfinder (The "Job Seeker" side)    
 class OpportunityDetailView(RetrieveUpdateDestroyAPIView):
@@ -88,6 +90,21 @@ class OpportunityDetailView(RetrieveUpdateDestroyAPIView):
         if self.request.user.role != 'enabler':
             raise PermissionDenied("Only Enablers can edit opportunities.")
         serializer.save()
+    
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if instance.applicants.exists():
+            instance.is_open = False
+            instance.save()
+            return Response(
+                {"message": "Opportunity has applicants and cannot be deleted. It has been closed instead."},
+                status=status.HTTP_200_OK
+            )
+        self.perform_destroy(instance)
+        return Response(
+            {"message": "Opportunity deleted successfully."},
+            status=status.HTTP_204_NO_CONTENT
+        )
 
     def perform_destroy(self, instance):
         if instance.applicants.exists():
@@ -95,7 +112,7 @@ class OpportunityDetailView(RetrieveUpdateDestroyAPIView):
             instance.is_open = False
             instance.save()
 
-            raise ValidationError("Opportunity cannot be deleted because it has applicants. It has been closed instead.")
+            return
         instance.delete()
 
 # admin interface with all opportunities and their bookmark counts
