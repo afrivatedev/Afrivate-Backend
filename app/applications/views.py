@@ -69,20 +69,18 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         if Application.objects.filter(user=user, opportunity=opportunity).exists():
             raise ValidationError({"detail": "You have already applied for this opportunity."})
 
-        if user.role != 'pathfinder':
-            raise ValidationError({"detail": "Only Pathfinders can apply."})
-        
         serializer.save(user=user)
 
     def perform_update(self, serializer):
         instance = self.get_object()
+        user = self.request.user
 
-        if 'status' in self.request.data and not self.request.user.role == 'enabler':
-             raise ValidationError("Pathfinders cannot modify application status.")
+        if user.role == 'pathfinder':
+            if instance.status != 'pending':
+                raise ValidationError("Your application is already under review and cannot be edited.")
+            if 'status' in self.request.data:
+                raise ValidationError("Pathfinders cannot modify application status.")
 
-        if instance.status != 'pending' and self.request.user.role == 'pathfinder':
-            raise ValidationError("Locked: Application is already under review.")
-            
         serializer.save()
 
     def perform_destroy(self, instance):

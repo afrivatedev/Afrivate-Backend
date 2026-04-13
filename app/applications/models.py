@@ -1,6 +1,13 @@
 from django.db import models
 from django.conf import settings
 from opportunities.models import Opportunity
+from cloudinary_storage.storage import RawMediaCloudinaryStorage
+
+def resume_file_path(instance, filename):
+    import os, uuid
+    ext = os.path.splitext(filename)[1]
+    filename = f'{uuid.uuid4()}{ext}'
+    return f'afrivate/resumes/user_{instance.user.id}/{filename}'
 
 # Create your models here.
 class Application(models.Model):
@@ -16,7 +23,7 @@ class Application(models.Model):
 
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
     
-    resume = models.FileField(upload_to='resumes/', null=True, blank=True)
+    resume = models.FileField(storage= RawMediaCloudinaryStorage(),upload_to=resume_file_path, null=True, blank=True)
     profile_resume = models.ForeignKey(
         "profiles.Credential",
         null=True,
