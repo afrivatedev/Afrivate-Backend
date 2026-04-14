@@ -30,42 +30,42 @@ class BookmarkListCreateView(ListCreateAPIView):
     pagination_class = StandardResultsPagination
 
     def get_queryset(self):
-        user = self.request.user
-        return Bookmark.objects.filter(user=user).select_related('opportunity')
+        return Bookmark.objects.filter(
+            user=self.request.user
+        ).select_related('opportunity')
 
     def perform_create(self, serializer):
+        if self.request.user.role != 'pathfinder':
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Only pathfinders can bookmark opportunities.")
         serializer.save(user=self.request.user)
 
 
 # remove opportunity (unbookmark) /api/bookmarks/{opportunity_id}/ DELETE {204 No Content}
 class BookmarkDeleteView(DestroyAPIView):
     """ Remove a bookmarked opportunity for the authenticated user.
-     DELETE /api/bookmarks/{bookmark_id}/
-     """
+    DELETE /api/bookmarks/{bookmark_id}/
+    """
     # serializer_class = BookmarkSerializer
     permission_classes = [IsAuthenticated]
+    serializer_class = BookmarkSerializer
     lookup_field = 'opportunity_id'
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
             return Bookmark.objects.none()
-
-        user = self.request.user
-        if not user.is_authenticated:
-            return Bookmark.objects.none()
-        return Bookmark.objects.filter(user=user)
+        return Bookmark.objects.filter(user=self.request.user)
 
 
 class PathfinderBookmarkView(ListCreateAPIView):
     permission_classes = [IsEnablerUser]
     serializer_class = BookmarkUserSerializer
+    pagination_class = StandardResultsPagination
 
     def get_queryset(self):
         # Only show the bookmarks created by THIS enabler
-        user = self.request.user
-
         return BookmarkUser.objects.filter(
-            enabler=user
+            enabler=self.request.user
         ).select_related('pathfinder__profile')
 
     def perform_create(self, serializer):

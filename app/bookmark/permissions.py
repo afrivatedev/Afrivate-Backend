@@ -8,4 +8,4 @@ class IsEnablerUser(permissions.BasePermission):
         if not request.user.is_authenticated:
             return False
         # Check if the user has an 'enabler_extra' via the profile relation
-        return hasattr(request.user.profile, 'enabler_extra')
+        return getattr(request.user, 'role', None) == 'enabler'

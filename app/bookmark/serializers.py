@@ -36,6 +36,9 @@ class BookmarkUserSerializer(serializers.ModelSerializer):
         enabler = self.context['request'].user
         pathfinder = attrs.get('pathfinder')
 
+        if pathfinder.profile.user.role != 'pathfinder':
+            raise serializers.ValidationError("You can only bookmark pathfinder profiles.")
+
         # Enforce unique together here since the enabler comes from request, not payload
         if BookmarkUser.objects.filter(enabler=enabler, pathfinder=pathfinder).exists():
             raise serializers.ValidationError("You have already bookmarked this pathfinder.")
@@ -59,6 +62,9 @@ class BookmarkSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         user = self.context['request'].user
         opportunity = attrs.get('opportunity')
+
+        if not opportunity.is_open:
+            raise serializers.ValidationError("You cannot bookmark a closed opportunity.")
 
         # Enforce unique together here since the user comes from request, not payload
         if Bookmark.objects.filter(user=user, opportunity=opportunity).exists():
