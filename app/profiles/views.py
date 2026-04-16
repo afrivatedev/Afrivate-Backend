@@ -18,7 +18,7 @@ from rest_framework import (
     generics,
 )
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
-
+from user_database.permissions import IsVerifiedUser
 import logging
 
 logger = logging.getLogger(__name__)
@@ -53,6 +53,7 @@ class EnablerProfileAPIView(BaseProfileView):
     when creating  a profile instance
     """
     serializer_class = EnablerProfileSerializer
+    permission_classes = (IsAuthenticated, IsVerifiedUser)
 
     def get_object(self):
         """retrieve the profile instance for the logged-in user profile."""
@@ -75,7 +76,7 @@ class PathfinderProfileAPIView(BaseProfileView):
     when creating a profile instance
     """
     serializer_class = PathfinderProfileSerializer
-    permission_classes = (IsAuthenticated, )
+    permission_classes = (IsAuthenticated, IsVerifiedUser)
     authentication_classes = (JWTAuthentication, )
 
     def get_object(self):
@@ -95,7 +96,7 @@ class ProfilePictureAPIView(mixins.RetrieveModelMixin,
     """View to handle profile picture retrieve and update for the current user's Profile."""
     serializer_class = ProfilePictureSerializer
     authentication_classes = (JWTAuthentication,)
-    permission_classes = (IsAuthenticated,)
+    permission_classes = (IsAuthenticated, IsVerifiedUser)
     parser_classes = (MultiPartParser, FormParser)
     http_method_names = ("get", "put", "patch", "head", "options")
 
@@ -112,7 +113,7 @@ class ProfilePictureAPIView(mixins.RetrieveModelMixin,
 class CredentialViewSet(viewsets.ModelViewSet):
     """a model viewset to handle CRUD operations on the credential model"""
     serializer_class = CredentialSerializer
-    permission_classes = (IsAuthenticated,)
+    permission_classes = (IsAuthenticated, IsVerifiedUser)
     authentication_classes = (JWTAuthentication,)
 
     def get_queryset(self):
@@ -139,7 +140,7 @@ class SocialLinkViewSet(viewsets.ModelViewSet):
     Limits access so users only interact with their own links.
     """
     serializer_class = SocialLinkSerializer
-    permission_classes = [IsAuthenticated,]
+    permission_classes = (IsAuthenticated, IsVerifiedUser)
     authentication_classes = [JWTAuthentication,]
 
     def get_queryset(self):
@@ -185,7 +186,7 @@ class EnablerViewSet(ListAPIView):
 class PublicPathfinderProfileView(generics.RetrieveAPIView):
     """allows any authenticated user to view an Pathfinders's public profile"""
     serializer_class = PathfinderProfileSerializer
-    permission_classes = (IsAuthenticated,)
+    permission_classes = (IsAuthenticated, IsVerifiedUser)
     authentication_classes = (JWTAuthentication,)
 
     def get_object(self):
@@ -195,7 +196,7 @@ class PublicPathfinderProfileView(generics.RetrieveAPIView):
 class PublicEnablerProfileView(generics.RetrieveAPIView):
     """allows any authenticated user to view a Enabler's public profile"""
     serializer_class = EnablerProfileSerializer
-    permission_classes = (IsAuthenticated,)
+    permission_classes = (IsAuthenticated, IsVerifiedUser)
     authentication_classes = (JWTAuthentication,)
 
     def get_object(self):
