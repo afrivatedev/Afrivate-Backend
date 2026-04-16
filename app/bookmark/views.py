@@ -7,6 +7,8 @@ from rest_framework.pagination import PageNumberPagination
 from .serializers import BookmarkSerializer, BookmarkUserSerializer
 from .models import Bookmark, BookmarkUser
 from .permissions import IsEnablerUser
+
+from user_database.permissions import IsVerifiedUser
 import logging
 
 logger = logging.getLogger(__name__)
@@ -25,7 +27,7 @@ class StandardResultsPagination(PageNumberPagination):
 # save opportunity (bookmark) /api/bookmarks/ POST {200}
 class BookmarkListCreateView(ListCreateAPIView):
     """"""
-    permission_classes = [IsAuthenticated] # Only authenticated users can bookmark
+    permission_classes = [IsAuthenticated, IsVerifiedUser] # Only authenticated users can bookmark
     serializer_class = BookmarkSerializer
     pagination_class = StandardResultsPagination
 
@@ -47,7 +49,7 @@ class BookmarkDeleteView(DestroyAPIView):
     DELETE /api/bookmarks/{bookmark_id}/
     """
     # serializer_class = BookmarkSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsVerifiedUser]
     serializer_class = BookmarkSerializer
     lookup_field = 'opportunity_id'
 
@@ -58,7 +60,7 @@ class BookmarkDeleteView(DestroyAPIView):
 
 
 class PathfinderBookmarkView(ListCreateAPIView):
-    permission_classes = [IsEnablerUser]
+    permission_classes = [IsAuthenticated, IsVerifiedUser, IsEnablerUser]
     serializer_class = BookmarkUserSerializer
     pagination_class = StandardResultsPagination
 
@@ -72,7 +74,7 @@ class PathfinderBookmarkView(ListCreateAPIView):
         serializer.save(enabler=self.request.user)
 
 class PathfinderBookmarkDeleteView(DestroyAPIView):
-    permission_classes = [IsEnablerUser]
+    permission_classes = [IsAuthenticated, IsVerifiedUser, IsEnablerUser]
     lookup_field = 'pathfinder_id' # Allows deleting by the Pathfinder's User ID
 
     def get_queryset(self):

@@ -10,7 +10,7 @@ from rest_framework.exceptions import ValidationError
 
 from .serializers import ApplicationSerializer
 from .models import Application
-from user_database.permissions import IsEnablerUser #, IsPathfinderUser
+from user_database.permissions import IsEnablerUser, IsVerifiedUser #, IsPathfinderUser
 from opportunities.permissions import IsOwnerOrReadOnly, IsEnablerOrReadOnly, IsPathfinder
 
 # Create your views here.
@@ -52,13 +52,18 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         return base_qs.filter(user=user) 
     
     def get_permissions(self):
+        # BASE RULE: Everyone hitting this endpoint must be logged in AND verified
+        base = [IsAuthenticated(), IsVerifiedUser()]
+        
         if self.action == 'create':
-            return [IsPathfinder()]
+            return base + [IsPathfinder()]
         if self.action in ['update', 'partial_update', 'destroy']:
-            return [IsOwnerOrReadOnly()]
+            return base + [IsOwnerOrReadOnly()]
         if self.action == 'change_status':
-            return [IsEnablerOrReadOnly()] # Only Enablers can hit the /status endpoint
-        return [IsAuthenticated()]
+            return base + [IsEnablerUser()] # Replaced with IsEnablerUser to match your @action
+            
+        # For list and retrieve (GET requests), just use the base rules
+        return base
 
     def perform_create(self, serializer):
         # Automatically set the user to the logged-in pathfinder
@@ -89,7 +94,7 @@ class ApplicationViewSet(viewsets.ModelViewSet):
             raise ValidationError("Cannot withdraw an application once it is accepted/rejected.")
         instance.delete()
 
-    @action(detail=True, methods=['patch'], permission_classes=[IsEnablerUser])
+    @action(detail=True, methods=['patch'])
     def change_status(self, request, pk=None):
         # detail=True ensures this application belongs to the Enabler's opportunity 
         # because of the logic in get_queryset
