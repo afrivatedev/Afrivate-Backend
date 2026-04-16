@@ -21,6 +21,8 @@ from profiles.serializers import ApplicantProfileSerializer
 from applications.serializers import ApplicationListSerializer
 from .permissions import IsEnablerOrReadOnly, IsOwnerOrReadOnly, IsOpportunityOwner
 
+from user_database.permissions import IsVerifiedUser
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -53,6 +55,12 @@ class StandardResultsPagination(PageNumberPagination):
 
 # list all opportunities /api/opportunities/ GET {200}
 class OpportunityView(ListCreateAPIView):
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            return [IsAuthenticated(), IsVerifiedUser(), IsEnablerOrReadOnly()]
+        return [IsEnablerOrReadOnly()]
+    
+
     queryset = Opportunity.objects.select_related('created_by').order_by('-posted_at')
     serializer_class = OpportunitySerializer 
     pagination_class = StandardResultsPagination
@@ -69,7 +77,7 @@ class OpportunityView(ListCreateAPIView):
 
 # Specifically for the "My Posted Opportunities" page
 class EnablerOpportunityListView(ListAPIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsVerifiedUser]
     serializer_class = OpportunitySerializer
 
     def get_queryset(self):
@@ -84,7 +92,7 @@ class OpportunityDetailView(RetrieveUpdateDestroyAPIView):
     """
     queryset = Opportunity.objects.all()
     serializer_class = OpportunitySerializer
-    permission_classes = [IsOwnerOrReadOnly, IsEnablerOrReadOnly]
+    permission_classes = [IsAuthenticated, IsVerifiedUser, IsOwnerOrReadOnly, IsEnablerOrReadOnly]
 
     def perform_update(self, serializer):
         if self.request.user.role != 'enabler':
@@ -127,7 +135,7 @@ class OpportunityDetailView(RetrieveUpdateDestroyAPIView):
 
 class OpportunityApplicantListView(ListAPIView):
     """enabler views all applicants for their opportunity"""
-    permission_classes = [IsAuthenticated, IsOpportunityOwner]
+    permission_classes = [IsAuthenticated, IsVerifiedUser, IsOpportunityOwner]
     serializer_class = ApplicationListSerializer
 
     def get_queryset(self):
@@ -138,7 +146,7 @@ class OpportunityApplicantListView(ListAPIView):
 
 class ApplicantProfileView(RetrieveAPIView):
     """enabler views a specific applicant's full pathfinder profile"""
-    permission_classes = [IsAuthenticated, IsOpportunityOwner]
+    permission_classes = [IsAuthenticated, IsVerifiedUser, IsOpportunityOwner]
     serializer_class = ApplicantProfileSerializer
 
     def get_object(self):
