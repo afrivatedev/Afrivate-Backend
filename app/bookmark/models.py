@@ -1,7 +1,7 @@
 from django.db import models
 from django.conf import settings 
 from opportunities.models import Opportunity
-from profiles.models import PathfinderProfileExtra
+from profiles.models import PathfinderProfileExtra, EnablerProfileExtra
 
 # Create your models here.
 class Bookmark(models.Model):
@@ -34,3 +34,22 @@ class BookmarkUser(models.Model):
 
     def __str__(self):
         return f"{self.enabler} → {self.pathfinder}"
+    
+class BookmarkEnabler(models.Model):
+    pathfinder = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='bookmarked_enablers'
+    )
+    enabler = models.ForeignKey(
+        EnablerProfileExtra,
+        on_delete=models.CASCADE,
+        related_name='favorited_by_pathfinders'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("pathfinder", "enabler")
+
+    def __str__(self):
+        return f"{self.pathfinder} → {self.enabler}"

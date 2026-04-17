@@ -64,7 +64,7 @@ class OpportunityView(ListCreateAPIView):
     queryset = Opportunity.objects.select_related('created_by').order_by('-posted_at')
     serializer_class = OpportunitySerializer 
     pagination_class = StandardResultsPagination
-    permission_classes = [IsEnablerOrReadOnly] # Only enablers can create
+    permission_classes = [IsOwnerOrReadOnly, IsEnablerOrReadOnly] # Only enablers can create
     
     # Enable Search and Category Filtering
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
@@ -92,7 +92,12 @@ class OpportunityDetailView(RetrieveUpdateDestroyAPIView):
     """
     queryset = Opportunity.objects.all()
     serializer_class = OpportunitySerializer
-    permission_classes = [IsAuthenticated, IsVerifiedUser, IsOwnerOrReadOnly, IsEnablerOrReadOnly]
+
+    def get_permissions(self):
+        if self.request.method in ['PUT', 'PATCH', 'DELETE']:
+            return [IsAuthenticated(), IsVerifiedUser(), IsOwnerOrReadOnly(), IsEnablerOrReadOnly()]
+        return []
+
 
     def perform_update(self, serializer):
         if self.request.user.role != 'enabler':
