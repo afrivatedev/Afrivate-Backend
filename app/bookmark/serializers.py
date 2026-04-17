@@ -1,10 +1,10 @@
 from rest_framework import serializers
 
-from .models import Bookmark, BookmarkUser
+from .models import Bookmark, BookmarkUser, BookmarkEnabler
 from opportunities.models import Opportunity
 from opportunities.serializers import OpportunitySerializer
-from profiles.serializers import ApplicantProfileSerializer
-from profiles.models import PathfinderProfileExtra
+from profiles.serializers import ApplicantProfileSerializer, OrganizationProfileSerializer
+from profiles.models import PathfinderProfileExtra, EnablerProfileExtra
 
 from django.contrib.auth import get_user_model
 
@@ -69,4 +69,32 @@ class BookmarkSerializer(serializers.ModelSerializer):
         # Enforce unique together here since the user comes from request, not payload
         if Bookmark.objects.filter(user=user, opportunity=opportunity).exists():
             raise serializers.ValidationError("You have already bookmarked this opportunity.")
+        return attrs
+
+class BookmarkEnablerSerializer(serializers.ModelSerializer):
+    enabler_id = serializers.PrimaryKeyRelatedField(
+        queryset=EnablerProfileExtra.objects.all(),
+        source='enabler',
+        write_only=True
+    )
+    enabler_details = OrganizationProfileSerializer(
+        source='enabler',
+        read_only=True
+    )
+
+    class Meta:
+        model = BookmarkEnabler
+        fields = ['id', 'enabler_id', 'enabler_details', 'created_at']
+        read_only_fields = ['created_at']
+
+    def validate(self, attrs):
+        pathfinder = self.context['request'].user
+        enabler = attrs.get('enabler')
+
+        if enabler.profile.user.role != 'enabler':
+            raise serializers.ValidationError("You can only bookmark enabler profiles.")
+
+        if BookmarkEnabler.objects.filter(pathfinder=pathfinder, enabler=enabler).exists():
+            raise serializers.ValidationError("You have already bookmarked this enabler.")
+
         return attrs

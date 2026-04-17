@@ -13,4 +13,7 @@ urlpatterns = [
     
     path('applicants/saved/', PathfinderBookmarkView.as_view(), name='pathfinder-bookmarks'), # list and create pathfinder bookmarks
     path('applicants/saved/<int:pathfinder_id>/', PathfinderBookmarkDeleteView.as_view(), name='pathfinder-bookmark-delete'), # delete pathfinder bookmark
+
+    path('enablers/saved/', EnablerBookmarkView.as_view(), name='enabler-bookmarks'),
+    path('enablers/saved/<int:enabler_id>/', EnablerBookmarkDeleteView.as_view(), name='enabler-bookmark-delete'),
 ]
