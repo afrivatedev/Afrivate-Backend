@@ -4,9 +4,9 @@ from rest_framework.generics import ListCreateAPIView, DestroyAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.pagination import PageNumberPagination
 
-from .serializers import BookmarkSerializer, BookmarkUserSerializer
-from .models import Bookmark, BookmarkUser
-from .permissions import IsEnablerUser
+from .serializers import BookmarkSerializer, BookmarkUserSerializer, BookmarkEnablerSerializer
+from .models import Bookmark, BookmarkUser, BookmarkEnabler
+from .permissions import IsEnablerUser, IsPathfinderUser
 
 from user_database.permissions import IsVerifiedUser
 import logging
@@ -79,3 +79,27 @@ class PathfinderBookmarkDeleteView(DestroyAPIView):
 
     def get_queryset(self):
         return BookmarkUser.objects.filter(enabler=self.request.user)
+    
+
+class EnablerBookmarkView(ListCreateAPIView):
+    """Pathfinder bookmarks an enabler profile"""
+    permission_classes = [IsAuthenticated, IsVerifiedUser, IsPathfinderUser]
+    serializer_class = BookmarkEnablerSerializer
+    pagination_class = StandardResultsPagination
+
+    def get_queryset(self):
+        return BookmarkEnabler.objects.filter(
+            pathfinder=self.request.user
+        ).select_related('enabler__profile')
+
+    def perform_create(self, serializer):
+        serializer.save(pathfinder=self.request.user)
+
+class EnablerBookmarkDeleteView(DestroyAPIView):
+    """Pathfinder removes an enabler bookmark"""
+    permission_classes = [IsAuthenticated, IsVerifiedUser, IsPathfinderUser]
+    serializer_class = BookmarkEnablerSerializer
+    lookup_field = 'enabler_id'
+
+    def get_queryset(self):
+        return BookmarkEnabler.objects.filter(pathfinder=self.request.user)

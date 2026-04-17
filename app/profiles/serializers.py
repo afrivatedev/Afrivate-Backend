@@ -321,7 +321,7 @@ class ApplicantProfileSerializer(serializers.ModelSerializer):
             'skills', 'educations', 'certifications'
         ]
 
-class OriganizationProfileSerializer(serializers.ModelSerializer):
+class OrganizationProfileSerializer(serializers.ModelSerializer):
     """for pathfinders viewing an Organization's profile"""
     base_details = ProfileSerializer(source="profile", read_only=True)
     social_links = SocialLinkSerializer(source="profile.social_links", many=True, read_only=True)
@@ -329,6 +329,10 @@ class OriganizationProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = EnablerProfileExtra
         fields = [
-            'id', 'organization_name', 'description',
-            'base_details', 'social_links'
+            'id',
+            'name',
+            'employees',
+            'role',
+            'base_details',
+            'social_links'
         ]
