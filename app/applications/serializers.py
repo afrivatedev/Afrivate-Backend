@@ -50,8 +50,17 @@ class ApplicationListSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username', read_only=True)
     email = serializers.EmailField(source='user.email', read_only=True)
     resume = SignedCloudinaryFileField(read_only=True)
+    pathfinder_profile_id = serializers.SerializerMethodField()
 
     class Meta:
         model = Application
-        fields = ['id', 'applicant_id', 'username', 'email', 'status', 'cover_letter', 'applied_at', 'resume']
+        fields = ['id', 'applicant_id', 'username', 
+                'email', 'status', 'cover_letter', 
+                'applied_at', 'resume', 'pathfinder_profile_id']
         read_only_fields = fields
+
+    def get_pathfinder_profile_id(self, obj):
+        try:
+            return obj.user.profile.pathfinder_extra.id
+        except Exception:
+            return None
