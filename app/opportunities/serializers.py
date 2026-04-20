@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from rest_framework.validators import UniqueTogetherValidator
 from .models import Opportunity
 from django.utils import timezone
 from datetime import timedelta
@@ -22,6 +23,13 @@ class OpportunitySerializer(serializers.ModelSerializer):
         ]
         
         read_only_fields = ['created_by', 'posted_at']
+        validators = [
+            UniqueTogetherValidator(
+                queryset=Opportunity.objects.all(),
+                fields=['title', 'link'],
+                message="An opportunity with this title and link already exists.",
+            )
+        ]
 
     def validate_link(self, value):
         """Ensure the link is a valid secure URL."""

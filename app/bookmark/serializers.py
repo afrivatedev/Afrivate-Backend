@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
 
 from .models import Bookmark, BookmarkUser, BookmarkEnabler
 from opportunities.models import Opportunity
@@ -12,15 +13,9 @@ User = get_user_model()
 
 # write serializers here
 class BookmarkUserSerializer(serializers.ModelSerializer):
-    # Write: accept a pathfinder's profile extra pk to bookmark them
-
-    pathfinder_id = serializers.PrimaryKeyRelatedField(
-        queryset=PathfinderProfileExtra.objects.all(),  
-        # queryset=User.objects.filter(profile__pathfinder_extra__isnull=False),
-        source='pathfinder',
-        write_only=True
-    )
-    # Read: return the pathfinder's profile details 
+    # Write: accept the pathfinder's Django user ID
+    pathfinder_id = serializers.IntegerField(write_only=True)
+    # Read: return the pathfinder's profile details
     pathfinder_details = ApplicantProfileSerializer(
         source='pathfinder',
         read_only=True
@@ -31,17 +26,24 @@ class BookmarkUserSerializer(serializers.ModelSerializer):
         fields = ['id', 'pathfinder_id', 'pathfinder_details', 'created_at']
         read_only_fields = ['created_at']
 
-
     def validate(self, attrs):
         enabler = self.context['request'].user
-        pathfinder = attrs.get('pathfinder')
+        pathfinder_user_id = attrs.pop('pathfinder_id')
+
+        try:
+            pathfinder = PathfinderProfileExtra.objects.select_related('profile__user').get(
+                profile__user__id=pathfinder_user_id
+            )
+        except PathfinderProfileExtra.DoesNotExist:
+            raise serializers.ValidationError("No pathfinder profile found for this user.")
 
         if pathfinder.profile.user.role != 'pathfinder':
             raise serializers.ValidationError("You can only bookmark pathfinder profiles.")
 
-        # Enforce unique together here since the enabler comes from request, not payload
         if BookmarkUser.objects.filter(enabler=enabler, pathfinder=pathfinder).exists():
             raise serializers.ValidationError("You have already bookmarked this pathfinder.")
+
+        attrs['pathfinder'] = pathfinder
         return attrs
 
 
@@ -72,11 +74,8 @@ class BookmarkSerializer(serializers.ModelSerializer):
         return attrs
 
 class BookmarkEnablerSerializer(serializers.ModelSerializer):
-    enabler_id = serializers.PrimaryKeyRelatedField(
-        queryset=EnablerProfileExtra.objects.all(),
-        source='enabler',
-        write_only=True
-    )
+    # Write: accept the enabler's Django user ID
+    enabler_id = serializers.IntegerField(write_only=True)
     enabler_details = OrganizationProfileSerializer(
         source='enabler',
         read_only=True
@@ -89,7 +88,14 @@ class BookmarkEnablerSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         pathfinder = self.context['request'].user
-        enabler = attrs.get('enabler')
+        enabler_user_id = attrs.pop('enabler_id')
+
+        try:
+            enabler = EnablerProfileExtra.objects.select_related('profile__user').get(
+                profile__user__id=enabler_user_id
+            )
+        except EnablerProfileExtra.DoesNotExist:
+            raise serializers.ValidationError("No enabler profile found for this user.")
 
         if enabler.profile.user.role != 'enabler':
             raise serializers.ValidationError("You can only bookmark enabler profiles.")
@@ -97,4 +103,5 @@ class BookmarkEnablerSerializer(serializers.ModelSerializer):
         if BookmarkEnabler.objects.filter(pathfinder=pathfinder, enabler=enabler).exists():
             raise serializers.ValidationError("You have already bookmarked this enabler.")
 
+        attrs['enabler'] = enabler
         return attrs
