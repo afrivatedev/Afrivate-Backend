@@ -270,14 +270,20 @@ SIMPLE_JWT = {
     'TOKEN_OBTAIN_SERIALIZER': 'user_database.serializers.CustomTokenObtainPairSerializer',
 }
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000", # local frontend
-    'https://afrivate-tech.github.io',
-    'https://afrivate-backend-production.up.railway.app',
-    'https://afrivate.org',
-    'https://www.afrivate.org', 
-    'https://afrivate-volunteer-module-frontend.vercel.app'
+_CORS_ORIGINS_DEFAULT = [
+    "http://localhost:3000",
+    "https://afrivate-tech.github.io",
+    "https://afrivate-backend-production.up.railway.app",
+    "https://afrivate.org",
+    "https://www.afrivate.org",
+    "https://afrivate-volunteer-module-frontend.vercel.app",
 ]
+CORS_ALLOWED_ORIGINS = list(
+    {
+        *_CORS_ORIGINS_DEFAULT,
+        *[o.strip() for o in os.getenv("CORS_ALLOWED_ORIGINS", "").split(",") if o.strip()],
+    }
+)
 
 CSRF_TRUSTED_ORIGINS = [
         'https://afrivate-backend-production.up.railway.app',
