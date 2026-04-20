@@ -8,13 +8,6 @@ from .models import Opportunity
 - IsOpportunityOwner: Only the creator of an opportunity can view its applicants.
 """
 
-# write the permsissions here
-def has_permission(self, request, view):
-
-    print("USER:", request.user)
-    print("AUTH:", request.user.is_authenticated)
-    print("TOKEN:", request.auth)
-
 class IsOwnerOrReadOnly(BasePermission):
     """
     Custom permission to only allow creators of an opportunity to edit it.

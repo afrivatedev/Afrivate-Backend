@@ -9,7 +9,17 @@ from django.db import transaction
 
 import cloudinary.utils
 
-from profiles.models import *
+from django.db import models
+from profiles.models import (
+    Profile,
+    SocialLink,
+    Credential,
+    EnablerProfileExtra,
+    PathfinderProfileExtra,
+    PathfinderSkill,
+    PathfinderEducation,
+    PathfinderCertification,
+)
 import logging
 
 logger = logging.getLogger(__name__)
@@ -34,7 +44,7 @@ class SignedCloudinaryFileField(serializers.FileField):
             )
             return url
         except Exception as e:  
-            print(f"Cloudinary Signature Error: {e}")
+            logger.error(f"Cloudinary Signature Error: {e}")
             return value.url
 
 class SocialLinkSerializer(serializers.ModelSerializer):

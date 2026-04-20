@@ -23,7 +23,6 @@ def sync_user_profile_and_role(sender, instance, created, **kwargs):
             defaults={
                 "contact_email": instance.email,
                 "address": "",
-                # city="",
                 "state": "",
                 "country": "" # Avoid null errors in prod
             }

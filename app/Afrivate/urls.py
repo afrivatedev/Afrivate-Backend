@@ -55,13 +55,10 @@ urlpatterns = [
     path("api/profile/", include("profiles.urls")),
     path("api/bookmark/", include("bookmark.urls")),
     path("api/notify/", include("notifications.urls")),
-    # path("api/users/", include("user_database.urls")),
-    # path("api/newsletter/", include("newsletter.urls")),
     path("api/opportunities/", include("opportunities.urls")),
     path("api/applications/", include("applications.urls")),
 ]
 
-# this is to be changed to an amazon s3 bucket or any other cdn in production
 if settings.DEBUG:
     urlpatterns += static(
         settings.MEDIA_URL,
