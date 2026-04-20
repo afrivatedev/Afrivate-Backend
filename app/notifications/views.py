@@ -22,7 +22,7 @@ class NotificationViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [IsAdminUser()]
-        return [AllowAny()]
+        return [IsAuthenticated()]
 
     def get_queryset(self):
         # Short-circuit for Swagger/drf-yasg
@@ -58,9 +58,10 @@ class NotificationViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])
     def mark_all_read(self, request):
         notifications = Notification.objects.exclude(read_by=request.user)
+        count = notifications.count()
         for notification in notifications:
             notification.read_by.add(request.user)
         return Response(
-            {"message": f"{notifications.count()} notifications marked as read."},
+            {"message": f"{count} notifications marked as read."},
             status=status.HTTP_200_OK
         )
