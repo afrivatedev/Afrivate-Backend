@@ -86,14 +86,10 @@ INSTALLED_APPS = [
     'user_database',
     'profiles',
     'waitlist',
-    'newsletter',
     "bookmark",
     'notifications',
     'applications',
     'opportunities',
-
-    # signals
-    # 'profiles.apps.ProfilesConfig'
 
     # allauth for social login
     'allauth',
@@ -149,7 +145,7 @@ DATABASES = {
     "default": dj_database_url.parse(
         os.environ.get("DB_URL"),
         conn_max_age=600,
-        ssl_require= not True, # set back to true in production
+        ssl_require=not DEBUG,  # True in production (DEBUG=0), False in local dev (DEBUG=1)
     )
 }
 
@@ -169,18 +165,6 @@ STORAGES = {
 
 MAX_PROFILE_PIC_MB = 5
 PROFILE_PIC_ALLOWED_FORMATS = {"JPEG", "JPG", "PNG", "WEBP"}
-
-# S3 endpoint
-# AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")
-# AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
-# AWS_STORAGE_BUCKET_NAME = os.environ.get("AWS_STORAGE_BUCKET_NAME")
-# AWS_S3_ENDPOINT_URL = os.environ.get("AWS_S3_ENDPOINT_URL")   
-# AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME")
-
-
-# Optional, recommended
-# AWS_S3_FILE_OVERWRITE = False
-# AWS_DEFAULT_ACL = None
 
 
 # Password validation
@@ -240,15 +224,7 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 # Email configuration
-# SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
-# ACCOUNT_EMAIL_VERIFICATION = "mandatory"
-
-# EMAIL_BACKEND = os.getenv("DJANGO_EMAIL_BACKEND")
-# EMAIL_HOST = "smtp.gmail.com" # this should head to env file
-# EMAIL_PORT = 587
-# EMAIL_USE_TLS = True
-# EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
-# EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
+SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL")
 
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
@@ -260,6 +236,17 @@ REST_FRAMEWORK = {
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
     'EXCEPTION_HANDLER': 'profiles.utils.custom_exception_handler',
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.ScopedRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'auth_register':        '5/hour',
+        'auth_login':           '10/hour',
+        'auth_otp_verify':      '10/hour',
+        'auth_resend_otp':      '5/hour',
+        'auth_forgot_password': '5/hour',
+        'auth_password_reset':  '10/hour',
+    },
 }
 
 SWAGGER_SETTINGS = {
@@ -299,7 +286,7 @@ CSRF_TRUSTED_ORIGINS = [
 
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_ALL_ORIGINS = False
-PASSWORD_RESET_TIMEOUT = 86400  # 24 hours in seconds, COULD BE REDUCED FOR BETTER SECURITY
+PASSWORD_RESET_TIMEOUT = 3600  # 1 hour in seconds
 
 
 LOGGING = {

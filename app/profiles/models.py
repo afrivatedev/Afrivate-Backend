@@ -5,6 +5,7 @@ Profile model for user profiles, including Enabler and Pathfinder extra fields, 
 import os
 import uuid
 from django.conf import settings
+from django.core.validators import URLValidator
 from django.db import models
 from cloudinary_storage.storage import RawMediaCloudinaryStorage
 
@@ -37,7 +38,6 @@ class Profile(models.Model):
     contact_email = models.EmailField(max_length=256, null=True, blank=True)
     phone_number = models.CharField(max_length=20,null=True, blank=True)
     address = models.TextField(max_length=256,null=True, blank=True)
-    # city = models.CharField(max_length=50, null=False, blank=False)
     state = models.CharField(max_length=50,null=True, blank=True)
     country = models.CharField(max_length=50,null=True, blank=True)
     
@@ -69,7 +69,7 @@ class SocialLink(models.Model):
     """table for all social links, it is attached to the profile instance"""
 
     platform_name = models.CharField(max_length=50, blank=False,null=False)
-    platform_url = models.URLField(max_length=150,blank=False, null=False)
+    platform_url = models.URLField(max_length=150, blank=False, null=False, validators=[URLValidator(schemes=['http', 'https'])])
     profile = models.ForeignKey("Profile", on_delete=models.CASCADE, blank=False, null=False, related_name="social_links")
 
 
