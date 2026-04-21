@@ -87,7 +87,7 @@ class ApplicationViewSet(viewsets.ModelViewSet):
             ),
             type='personal',
             priority='info',
-            link=f"/opportunities/{opportunity.id}/applicants/{application.id}/",
+            link=f"/enabler/applicants/{opportunity.id}/",
         )
 
     def perform_update(self, serializer):
@@ -132,7 +132,7 @@ class ApplicationViewSet(viewsets.ModelViewSet):
             ),
             type='personal',
             priority='info' if new_status == 'accepted' else 'warning',
-            link=f"/applications/{application.id}/",
+            link="/my-applications",
         )
 
         return Response({'message': f'Application marked as {new_status}'})
