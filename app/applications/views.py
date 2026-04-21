@@ -12,6 +12,7 @@ from .serializers import ApplicationSerializer
 from .models import Application
 from user_database.permissions import IsEnablerUser, IsVerifiedUser #, IsPathfinderUser
 from opportunities.permissions import IsOwnerOrReadOnly, IsEnablerOrReadOnly, IsPathfinder
+from notifications.models import Notification
 
 # Create your views here.
 
@@ -74,7 +75,20 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         if Application.objects.filter(user=user, opportunity=opportunity).exists():
             raise ValidationError({"detail": "You have already applied for this opportunity."})
 
-        serializer.save(user=user)
+        application = serializer.save(user=user)
+
+        # Notify the enabler who owns the opportunity
+        Notification.objects.create(
+            recipient=opportunity.created_by,
+            title="New Application Received",
+            message=(
+                f"{user.username} has applied for your opportunity: "
+                f"'{opportunity.title}'."
+            ),
+            type='personal',
+            priority='info',
+            link=f"/opportunities/{opportunity.id}/applicants/{application.id}/",
+        )
 
     def perform_update(self, serializer):
         instance = self.get_object()
@@ -107,7 +121,20 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         application.status = new_status
         application.reviewed_at = timezone.now()
         application.save()
-        
+
+        # Notify the pathfinder of the enabler's decision
+        Notification.objects.create(
+            recipient=application.user,
+            title=f"Application {new_status.capitalize()}",
+            message=(
+                f"Your application for '{application.opportunity.title}' "
+                f"has been {new_status}."
+            ),
+            type='personal',
+            priority='info' if new_status == 'accepted' else 'warning',
+            link=f"/applications/{application.id}/",
+        )
+
         return Response({'message': f'Application marked as {new_status}'})
     
 # For the Pathfinder (The "Applicant" side)

@@ -1,5 +1,5 @@
 from django.http import HttpResponse
-from django.db.models import Exists, OuterRef
+from django.db.models import Exists, OuterRef, Q
 from rest_framework import viewsets
 from .models import Notification
 from .serializers import NotificationSerializer
@@ -29,22 +29,23 @@ class NotificationViewSet(viewsets.ModelViewSet):
         if getattr(self, 'swagger_fake_view', False):
             return Notification.objects.none()
 
-        # Get the current viewer
         user = self.request.user
 
-        # If they are logged in, check the "read_by" table for THEIR ID
         if user.is_authenticated:
-            return Notification.objects.annotate(
+            # Return notifications addressed to this user OR broadcast (recipient=None)
+            return Notification.objects.filter(
+                Q(recipient=user) | Q(recipient__isnull=True)
+            ).annotate(
                 current_user_read=Exists(
                     Notification.read_by.through.objects.filter(
                         notification_id=OuterRef('pk'),
-                        customuser_id=user.id # customuser_ID=user_ID
+                        customuser_id=user.id
                     )
                 )
             ).order_by('-created_at')
 
-        # If they aren't logged in, just show the notifications
-        return Notification.objects.all().order_by('-created_at')
+        # Unauthenticated: broadcast-only (all endpoints require auth anyway)
+        return Notification.objects.filter(recipient__isnull=True).order_by('-created_at')
     
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def mark_read(self, request, pk=None):
