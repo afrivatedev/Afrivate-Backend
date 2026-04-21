@@ -1,6 +1,8 @@
 """
 Serializer for the profile endpoint.
 """
+import os
+
 from rest_framework import serializers
 from django.conf import settings
 from PIL import Image
@@ -57,11 +59,36 @@ class SocialLinkSerializer(serializers.ModelSerializer):
 class CredentialSerializer(serializers.ModelSerializer):
     """serializer for the credential model"""
     document = SignedCloudinaryFileField(required=True)
+    # Not required from the client — falls back to the uploaded file's original name
+    document_name = serializers.CharField(max_length=100, required=False, allow_blank=True)
 
     class Meta:
         model = Credential
         fields = ("id", "document_name", "document", "is_verified")
-        read_only_fields = ("id","is_verified")
+        read_only_fields = ("id", "is_verified")
+
+    def _resolve_document_name(self, validated_data):
+        """
+        Ensure document_name is always meaningful.
+        If the client omits it or sends a blank/generic value, derive it from
+        the uploaded file's original filename (available on the InMemoryUploadedFile
+        object before storage renames it to a UUID path).
+        """
+        name = validated_data.get('document_name', '').strip()
+        if not name:
+            document = validated_data.get('document')
+            if document and hasattr(document, 'name'):
+                name = os.path.splitext(os.path.basename(document.name))[0]
+            validated_data['document_name'] = name or 'document'
+        return validated_data
+
+    def create(self, validated_data):
+        validated_data = self._resolve_document_name(validated_data)
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        validated_data = self._resolve_document_name(validated_data)
+        return super().update(instance, validated_data)
 
 class ProfileSerializer(serializers.ModelSerializer):
     """serializer for the enabler profile extra fields"""
