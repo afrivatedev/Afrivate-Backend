@@ -78,6 +78,8 @@ class BookmarkSerializer(serializers.ModelSerializer):
 class BookmarkEnablerSerializer(serializers.ModelSerializer):
     # Write: accept the enabler's Django user ID
     enabler_id = serializers.IntegerField(write_only=True)
+    # Read: return the Django auth user ID of the bookmarked enabler
+    enabler_user_id = serializers.IntegerField(source='enabler.profile.user.id', read_only=True)
     enabler_details = OrganizationProfileSerializer(
         source='enabler',
         read_only=True
@@ -85,7 +87,7 @@ class BookmarkEnablerSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = BookmarkEnabler
-        fields = ['id', 'enabler_id', 'enabler_details', 'created_at']
+        fields = ['id', 'enabler_id', 'enabler_user_id', 'enabler_details', 'created_at']
         read_only_fields = ['created_at']
 
     def validate(self, attrs):
