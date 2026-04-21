@@ -15,6 +15,8 @@ User = get_user_model()
 class BookmarkUserSerializer(serializers.ModelSerializer):
     # Write: accept the pathfinder's Django user ID
     pathfinder_id = serializers.IntegerField(write_only=True)
+    # Read: return the Django auth user ID of the bookmarked pathfinder
+    pathfinder_user_id = serializers.IntegerField(source='pathfinder.profile.user.id', read_only=True)
     # Read: return the pathfinder's profile details
     pathfinder_details = ApplicantProfileSerializer(
         source='pathfinder',
@@ -23,7 +25,7 @@ class BookmarkUserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = BookmarkUser
-        fields = ['id', 'pathfinder_id', 'pathfinder_details', 'created_at']
+        fields = ['id', 'pathfinder_id', 'pathfinder_user_id', 'pathfinder_details', 'created_at']
         read_only_fields = ['created_at']
 
     def validate(self, attrs):
