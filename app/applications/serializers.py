@@ -8,11 +8,12 @@ class ApplicationSerializer(serializers.ModelSerializer):
     opportunity_title = serializers.ReadOnlyField(source='opportunity.title')
     pathfinder_profile = serializers.SerializerMethodField()
     resume = SignedCloudinaryFileField(required=False, allow_null=True)
+    profile_resume_url = serializers.SerializerMethodField()
     
     class Meta:
         model = Application
         fields = ['id','user','user_name','pathfinder_profile',
-                'opportunity','opportunity_title', 'resume', 'profile_resume', 'status',
+                'opportunity','opportunity_title', 'resume', 'profile_resume', 'profile_resume_url', 'status',
                     'cover_letter', 'applied_at', 'reviewed_at', ]
         read_only_fields = ['status', 'user', 'applied_at', 'reviewed_at']
 
@@ -43,6 +44,15 @@ class ApplicationSerializer(serializers.ModelSerializer):
         if user.role != 'pathfinder':
             raise serializers.ValidationError("Only Pathfinders can apply for opportunities.")
         return data
+    
+    def get_profile_resume_url(self, obj):
+        try:
+            if obj.profile_resume and obj.profile_resume.document:
+                return obj.profile_resume.document.url
+        except Exception as e:
+            print(f"Resume URL error: {e}")
+            return None
+        return None
     
 class ApplicationListSerializer(serializers.ModelSerializer):
     applicant_id = serializers.IntegerField(source='user.id', read_only=True)
