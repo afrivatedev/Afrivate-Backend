@@ -49,14 +49,16 @@ class ApplicationListSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username', read_only=True)
     email = serializers.EmailField(source='user.email', read_only=True)
     resume = SignedCloudinaryFileField(read_only=True)
+
     pathfinder_profile_id = serializers.SerializerMethodField() 
+    profile_resume_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Application
         fields = [
             'id', 'applicant_id', 'username', 'email',
             'status', 'cover_letter', 'applied_at', 'resume',
-            'pathfinder_profile_id'  # ← add this
+            'pathfinder_profile_id', 'profile_resume_url'
         ]
         read_only_fields = fields
 
@@ -65,3 +67,20 @@ class ApplicationListSerializer(serializers.ModelSerializer):
             return obj.user.profile.pathfinder_extra.id
         except Exception:
             return None
+        
+    def get_profile_resume_url(self, obj):
+        """Returns the signed URL of the credential used as resume"""
+        try:
+            if obj.profile_resume and obj.profile_resume.document:
+                import cloudinary.utils
+                url, _ = cloudinary.utils.cloudinary_url(
+                    obj.profile_resume.document.name,
+                    resource_type="raw",
+                    type="upload",
+                    sign_url=True,
+                    secure=True
+                )
+                return url
+        except Exception:
+            return None
+        return None
