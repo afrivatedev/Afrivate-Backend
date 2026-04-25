@@ -1,16 +1,13 @@
 from django.http import HttpResponse
 from django.db.models import Exists, OuterRef
-from rest_framework import viewsets
+from rest_framework import viewsets, status
+from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
+from rest_framework.decorators import action
+from rest_framework.response import Response
+
 from .models import Notification
 from .serializers import NotificationSerializer
 
-from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
-from rest_framework import viewsets, mixins
-from rest_framework.generics import GenericAPIView
-
-from rest_framework.decorators import action
-from rest_framework.response import Response
-from rest_framework import status
 
 def health_check(request):
     return HttpResponse("Notifications service is running.")
@@ -36,9 +33,9 @@ class NotificationViewSet(viewsets.ModelViewSet):
         if user.is_authenticated:
             return Notification.objects.annotate(
                 current_user_read=Exists(
-                    Notification.read_by.through.objects.filter(
-                        notification_id=OuterRef('pk'),
-                        customuser_id=user.id # customuser_ID=user_ID
+                    Notification.objects.filter(
+                        pk=OuterRef('pk'),
+                        read_by=user
                     )
                 )
             ).order_by('-created_at')
@@ -57,10 +54,12 @@ class NotificationViewSet(viewsets.ModelViewSet):
     
     @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])
     def mark_all_read(self, request):
-        notifications = Notification.objects.exclude(read_by=request.user)
-        for notification in notifications:
-            notification.read_by.add(request.user)
+        unread_notifications = Notification.objects.exclude(read_by=request.user)
+
+        if unread_notifications.exists():
+            request.user.read_notifications.add(*unread_notifications)
+
         return Response(
-            {"message": f"{notifications.count()} notifications marked as read."},
+            {"message": "All notifications marked as read."},
             status=status.HTTP_200_OK
         )
