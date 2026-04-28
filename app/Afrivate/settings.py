@@ -39,11 +39,10 @@ and set it as an environment variable.
 DEBUG = bool(int(os.environ.get("DEBUG","0"))) # set to 0 in production
 
 if DEBUG:
-    # Local development environment (localhost URLs)
     SITE_DOMAIN = "http://127.0.0.1:8000"
     FRONTEND_URL = "http://localhost:3000"
 else:
-    # Production environment (Actual live URLs)
+    # Fall back to the Railway/Vercel URLs if env vars are absent in production.
     SITE_DOMAIN = os.environ.get("SITE_DOMAIN",'https://afrivate-backend-production.up.railway.app')
     FRONTEND_URL = os.environ.get("FRONTEND_URL",'https://afrivate-volunteer-module-frontend.vercel.app')
 
@@ -141,11 +140,14 @@ WSGI_APPLICATION = 'Afrivate.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+# ssl_require=not DEBUG encrypts DB connections in production (DEBUG=0) and disables
+# SSL for local dev (DEBUG=1), where the local PostgreSQL instance typically has no cert.
+# A previous version had ssl_require=not True (always False) — that was a security bug.
 DATABASES = {
     "default": dj_database_url.parse(
         os.environ.get("DB_URL"),
         conn_max_age=600,
-        ssl_require=not DEBUG,  # True in production (DEBUG=0), False in local dev (DEBUG=1)
+        ssl_require=not DEBUG,
     )
 }
 
@@ -231,6 +233,9 @@ GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 
 RESEND_API_KEY = os.getenv("RESEND_API_KEY")
 
+# ScopedRateThrottle is used project-wide. Each auth view sets throttle_scope to one
+# of the keys below. The counts are stored in the Redis cache (CACHES["default"]).
+# To add a new scope: add a key here AND set throttle_scope on the view class.
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
@@ -260,9 +265,14 @@ SWAGGER_SETTINGS = {
     }
 }
 
+# ROTATE_REFRESH_TOKENS + BLACKLIST_AFTER_ROTATION: every token refresh issues a new
+# refresh token and immediately invalidates the old one. This means a stolen refresh
+# token can only be used once before it is blacklisted.
+# CustomTokenObtainPairSerializer injects 'role' and 'email' into the JWT payload
+# so the frontend can read them without a separate /me endpoint.
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(hours=1), # to be changed to hours in production
-    'REFRESH_TOKEN_LIFETIME': timedelta(hours=6), # to be changed to weeks in production
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),
+    'REFRESH_TOKEN_LIFETIME': timedelta(hours=6),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
     'AUTH_HEADER_TYPES': ('Bearer',),
@@ -270,6 +280,9 @@ SIMPLE_JWT = {
     'TOKEN_OBTAIN_SERIALIZER': 'user_database.serializers.CustomTokenObtainPairSerializer',
 }
 
+# CORS_ALLOWED_ORIGINS env var (comma-separated) is merged with the hardcoded defaults
+# at startup, using a set to deduplicate. This lets new frontend origins (e.g. a staging
+# deployment) be added via Railway env vars without touching code.
 _CORS_ORIGINS_DEFAULT = [
     "http://localhost:3000",
     "https://afrivate-tech.github.io",
@@ -366,6 +379,9 @@ SOCIALACCOUNT_ADAPTER = 'Authentication.adapter.CustomSocialAccountAdapter'
 ACCOUNT_LOGIN_METHODS = {'email'}  
 ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*']
 
+# Cloudinary is the default storage backend (STORAGES["default"]) for all media files:
+# profile pictures (MediaCloudinaryStorage) and credentials/resumes (RawMediaCloudinaryStorage).
+# RESOURCE_TYPE="auto" lets Cloudinary detect whether the upload is an image, video, or raw file.
 CLOUDINARY_STORAGE = {
     "SECURE": True,
     "RESOURCE_TYPE": "auto",
@@ -374,8 +390,8 @@ CLOUDINARY_STORAGE = {
     'API_SECRET': os.getenv("CLOUDINARY_API_SECRET")
 }
 
-# redis configuration for caching and rate limiting
-
+# Redis is shared between three consumers: Django cache (used by ScopedRateThrottle),
+# Celery broker, and Celery result backend. A single REDIS_URL feeds all three.
 REDIS_URL = os.getenv('REDIS_URL', 'redis://127.0.0.1:6379/1')
 
 CACHES = {

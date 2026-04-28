@@ -67,17 +67,19 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         return base
 
     def perform_create(self, serializer):
-        # Automatically set the user to the logged-in pathfinder
         user = self.request.user
         opportunity = serializer.validated_data.get('opportunity')
 
-        # Check for existing application
+        # unique_together on the model would raise an IntegrityError on duplicate;
+        # this explicit check returns a clean 400 instead of a 500.
         if Application.objects.filter(user=user, opportunity=opportunity).exists():
             raise ValidationError({"detail": "You have already applied for this opportunity."})
 
         application = serializer.save(user=user)
 
-        # Notify the enabler who owns the opportunity
+        # Targeted notification to the enabler — recipient set to opportunity owner
+        # so only that enabler sees this in their notification feed.
+        # link is a frontend route, not a backend API URL.
         Notification.objects.create(
             recipient=opportunity.created_by,
             title="New Application Received",
@@ -110,8 +112,9 @@ class ApplicationViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['patch'])
     def change_status(self, request, pk=None):
-        # detail=True ensures this application belongs to the Enabler's opportunity 
-        # because of the logic in get_queryset
+        # detail=True means self.get_object() goes through get_queryset(), which for
+        # enablers returns only applications on their own opportunities — so an enabler
+        # cannot change the status of another enabler's applicants.
         application = self.get_object()
         new_status = request.data.get('status')
 
@@ -122,7 +125,9 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         application.reviewed_at = timezone.now()
         application.save()
 
-        # Notify the pathfinder of the enabler's decision
+        # Targeted notification to the pathfinder who applied.
+        # Priority is 'warning' for rejections so the frontend can colour it differently.
+        # link is a frontend route to the pathfinder's applications list.
         Notification.objects.create(
             recipient=application.user,
             title=f"Application {new_status.capitalize()}",

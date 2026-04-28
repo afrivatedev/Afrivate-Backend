@@ -1,99 +1,98 @@
-Afrivate Backend
+> **Note:** This README is a quick-start guide. For a complete developer reference — including all API endpoints, architecture decisions, security configuration, deployment steps, and the full changelog — see [BACKEND_CHANGES.md](BACKEND_CHANGES.md).
 
-This is the backend service for Afrivate, a platform that connects users, manages authentication, and supports all app features via RESTful APIs.
-Built with Django and Django REST Framework (DRF).
+# Afrivate Backend
 
-🚀 Tech Stack
+Backend service for Afrivate: a marketplace platform connecting African professionals (Pathfinders) with organizations posting opportunities (Enablers). Built with Django and Django REST Framework.
 
-    Python 3.x
-    
-    Django
-    
-    Django REST Framework
-    
-    SQLite / PostgreSQL
-    
-    JWT Authentication
-    
-    CORS Headers
-    
-    React (frontend)
+## Tech Stack
 
-⚙️ Setup Instructions
+- Python 3.11+
+- Django 5.2.7
+- Django REST Framework 3.16
+- PostgreSQL (via dj-database-url)
+- Redis (cache + Celery broker)
+- JWT auth (djangorestframework-simplejwt)
+- Cloudinary (file storage)
+- Resend (auth emails) + SendGrid (waitlist emails)
+- Railway (deployment)
 
-Clone the Repository
-   
-    git clone https://github.com/your-username/afrivate-backend.git
-    cd afrivate-backend
+## Quick Setup
 
-Create a Virtual Environment
-   
-    python -m venv venv
-    venv\Scripts\activate  # (Windows)
-    # or
-    source venv/bin/activate  # (Mac/Linux)
+```bash
+# 1. Clone and checkout
+git clone https://github.com/AfriVate-Tech/Afrivate-Backend.git
+cd Afrivate-Backend
+git checkout light
 
-Install Dependencies
+# 2. Create virtual environment
+python -m venv venv
+venv\Scripts\activate     # Windows
+# or: source venv/bin/activate  # macOS/Linux
 
-    pip install -r requirements.txt
+# 3. Install dependencies
+cd app
+pip install -r requirements.txt
 
-Setup Environment Variables
-# Copy environment file
-    cp .env.example .env
-    
-Add...
+# 4. Configure environment
+cp .env.example .env
+# Edit .env — at minimum: SECRET_KEY, DB_URL, RESEND_API_KEY, SENDGRID_API_KEY,
+# CLOUDINARY_*, GOOGLE_CLIENT_ID
 
-    SECRET_KEY=your_django_secret_key
-    DEBUG=True
-    DATABASE_URL=your_database_url
-    ALLOWED_HOSTS=*
+# 5. Migrate and run
+python manage.py migrate
+python manage.py runserver
+```
 
-Apply Migrations
+See [BACKEND_CHANGES.md — Local Development Setup](BACKEND_CHANGES.md#16-local-development-setup) for full instructions including Redis setup and common error fixes.
 
-    python manage.py migrate
+## API Documentation
 
-Run the Server
+Interactive docs available when the server is running:
+- Swagger UI: `http://127.0.0.1:8000/api/v1/docs/`
+- ReDoc: `http://127.0.0.1:8000/docs/`
 
-    python manage.py runserver
+Production docs: `https://afrivate-backend-production.up.railway.app/api/v1/docs/`
 
-🔑 Authentication Logic
+## Authentication
 
-    Register – create new user with email & password
-    
-    Login – JWT-based authentication
-    
-    Forgot Password – request password reset via email link
-    
-    Reset Password – update password using valid token
-    
-    Change Password – authenticated users can change password
+All protected endpoints require `Authorization: Bearer <access_token>`.
 
-🧩 API Endpoints (Basic)
+- Access tokens expire in **1 hour** — refresh with `POST /api/auth/token/refresh/`.
+- Registration requires email OTP verification before login is permitted.
 
-      Endpoint	Method	Description
-      /api/register/	POST	Register user
-      /api/login/	POST	Login and get token
-      /api/user/	GET	Fetch user details
-      /api/password/forgot/	POST	Request reset email
-      /api/password/reset/	POST	Reset password
-      /api/password/change/	PUT	Change password
+## Key Endpoints
 
-🧰 Developer Notes
+| Endpoint | Method | Description |
+|---|---|---|
+| `/api/auth/register/` | POST | Register (Pathfinder or Enabler) |
+| `/api/auth/login/` | POST | Login with email/username + password |
+| `/api/auth/verify-otp/` | POST | Verify registration OTP |
+| `/api/auth/google/pathfinder/` | POST | Google OAuth as Pathfinder |
+| `/api/auth/google/enabler/` | POST | Google OAuth as Enabler |
+| `/api/opportunities/` | GET | Browse all opportunities |
+| `/api/applications/` | POST | Submit an application |
+| `/api/notify/notifications/` | GET | Fetch notifications |
 
-    Use Postman or Insomnia to test endpoints
+For the full endpoint table see [BACKEND_CHANGES.md — All API Endpoints](BACKEND_CHANGES.md#5-all-api-endpoints).
 
-Add new apps with:
+## Project Structure
 
-    python manage.py startapp app_name
+```
+app/
+├── Afrivate/        settings, urls, celery
+├── Authentication/  register, login, OTP, Google OAuth
+├── user_database/   CustomUser model, EmailVerification
+├── profiles/        profile CRUD, credentials, social links
+├── opportunities/   opportunity CRUD + applicant viewing
+├── applications/    application lifecycle
+├── bookmark/        three bookmark types
+├── notifications/   per-user and broadcast notifications
+└── waitlist/        pre-launch email capture
+```
 
+## Contributing
 
-Run tests with:
-
-    python manage.py test
-
-🧑‍💻 Contributors
-Backend: 
-
-Frontend: Afrivate Frontend Team
-
-Project: Afrivate Team
+1. Create a feature branch from `light` (not `main`).
+2. Follow the existing code patterns.
+3. Run `python manage.py test` before opening a PR.
+4. Target PRs at `light`, not `main`.

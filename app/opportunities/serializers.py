@@ -23,6 +23,8 @@ class OpportunitySerializer(serializers.ModelSerializer):
         ]
         
         read_only_fields = ['created_by', 'posted_at']
+        # UniqueTogetherValidator catches (title, link) duplicates and returns a clean 400.
+        # The model also has unique_together which would raise an IntegrityError without this.
         validators = [
             UniqueTogetherValidator(
                 queryset=Opportunity.objects.all(),
@@ -32,14 +34,15 @@ class OpportunitySerializer(serializers.ModelSerializer):
         ]
 
     def validate_link(self, value):
-        """Ensure the link is a valid secure URL."""
+        # Enforce HTTPS — plain HTTP links would expose applicants to MITM redirects.
         if not value.startswith('https://'):
             raise serializers.ValidationError("For security, all opportunity links must use HTTPS.")
         return value
 
     def validate(self, data):
-        """Enforce the Limited Edit Window (e.g., 12 hours)."""
-        # Check if this is an update request (instance exists)
+        # Edit window check runs only on updates (self.instance is set). This is the
+        # serializer-level guard; the model's can_edit() method provides the same logic
+        # for programmatic use outside the API.
         if self.instance:
             edit_limit = self.instance.posted_at + timedelta(hours=12)
             if timezone.now() > edit_limit:
