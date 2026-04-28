@@ -1,3 +1,5 @@
+> **Outdated — partially superseded.** This document was written against an early frontend prototype that used localStorage for most features. The backend API is now fully implemented. For the current, authoritative API reference see [BACKEND_CHANGES.md](../BACKEND_CHANGES.md#5-all-api-endpoints) or [Project_Flow.md](../Project_Flow.md#6-complete-api-reference). The base URL listed below (`afrivate-backend-test.onrender.com`) is no longer the production URL — use `https://afrivate-backend-production.up.railway.app`.
+
 # Routes Requiring API or Connection Functionality
 
 This document lists all routes that depend on an external API, backend service, or connection (e.g. localStorage) and what each requires.

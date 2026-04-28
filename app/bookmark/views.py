@@ -79,6 +79,9 @@ class PathfinderBookmarkDeleteView(DestroyAPIView):
     lookup_field = 'pathfinder_id'
 
     def get_object(self):
+        # The URL uses the pathfinder's Django user ID (not the BookmarkUser PK or
+        # PathfinderProfileExtra PK). The serializer exposes pathfinder_user_id in list
+        # responses specifically so the frontend can pass it here without a second lookup.
         user_id = self.kwargs['pathfinder_id']
         try:
             return BookmarkUser.objects.get(
@@ -110,6 +113,8 @@ class EnablerBookmarkDeleteView(DestroyAPIView):
     lookup_field = 'enabler_id'
 
     def get_object(self):
+        # Same pattern as PathfinderBookmarkDeleteView: URL uses the enabler's Django
+        # user ID, resolved through the profile relation to find the BookmarkEnabler row.
         user_id = self.kwargs['enabler_id']
         try:
             return BookmarkEnabler.objects.get(
