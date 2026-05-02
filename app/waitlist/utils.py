@@ -7,6 +7,8 @@ from sendgrid.helpers.mail import Mail, Email, To # , Content
 import logging
 import re
 
+logger = logging.getLogger(__name__)
+
 from Afrivate.settings import ALLOWED_DOMAINS, BLACKLISTED_DOMAINS, BAD_PATTERNS
 
 def send_waitlist_verification_email(request, token, email):
@@ -89,7 +91,7 @@ def send_waitlist_verification_email(request, token, email):
             return False
         
     except Exception as e:
-        print(f"SendGrid Error for {email}: {str(e)}")
+        logger.error(f"SendGrid Error for {email}: {str(e)}")
         return False
 
 def send_welcome_email(email, name):
@@ -150,7 +152,7 @@ def send_welcome_email(email, name):
             return False
         
     except Exception as e:
-        print(f"SendGrid Error for {email}: {str(e)}")
+        logger.error(f"SendGrid Error for {email}: {str(e)}")
         return False
 
 def matches_bad_pattern(email: str) -> bool:

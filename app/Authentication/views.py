@@ -12,11 +12,22 @@ from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from user_database.models import CustomUser, EmailVerification
-from user_database.serializers import *
-# from user_database.serializers import GoogleAuthSerializer # no need
+from user_database.serializers import (
+    CustomUserRegistrationSerializer,
+    CustomUserLoginSerializer,
+    ForgotPasswordSerializer,
+    ResetPasswordSerializer,
+    ChangePasswordSerializer,
+    VerifyRegistrationOTPSerializer,
+    VerifyPasswordResetOTPSerializer,
+    VerifyEmailSerializer,
+    GoogleAuthSerializer,
+    SetPasswordSerializer,
+)
 
 from .utils import sendotp_via_email, send_signup_otp_email, send_welcome_email
 
@@ -32,16 +43,19 @@ def index(request):
 class RegisterView(generics.CreateAPIView):
     permission_classes = [AllowAny]
     serializer_class = CustomUserRegistrationSerializer
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'auth_register'  # maps to 'auth_register': '5/hour' in settings.py
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True) # this would always run all the methods in the serializer
+        serializer.is_valid(raise_exception=True)
 
         try:
-            with transaction.atomic():   # applying fix
+            # Wrap user creation + OTP generation in one transaction so that if the
+            # email send fails the user row is rolled back — no orphaned unverifiable accounts.
+            with transaction.atomic():
                 user = serializer.save()
 
-                # should wrap this up in a transaction, if email sending fails, we should rollback user creation
                 verification, otp = EmailVerification.create_otp_verification(
                     email=user.email,
                     verification_type='user_signup',
@@ -70,19 +84,22 @@ class RegisterView(generics.CreateAPIView):
 class LoginView(generics.GenericAPIView):
     serializer_class = CustomUserLoginSerializer
     permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'auth_login'
     
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data['user']
 
+        # Serializer already authenticates the user; we double-check verification here
+        # because an unverified user can technically pass password validation.
         if not user.is_email_verified:
             return Response({
                 "error": "Account not verified. Please verify your email using the OTP sent to you."
             }, status=status.HTTP_403_FORBIDDEN)
 
-        # Generate JWT token
-        tokens = user.tokens()  # to create tokens method in model
+        tokens = user.tokens()  # mints JWT pair with custom claims (role, email)
         logging.info(f"Generating tokens for user {user.id}")
         
         return Response({
@@ -100,6 +117,8 @@ class LoginView(generics.GenericAPIView):
 class ForgotPasswordView(generics.GenericAPIView):
     serializer_class = ForgotPasswordSerializer
     permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'auth_forgot_password'
 
     def post(self, request, *args, **kwargs):
         from django.utils import timezone
@@ -113,29 +132,6 @@ class ForgotPasswordView(generics.GenericAPIView):
         try:
             user = CustomUser.objects.get(email=email)
 
-            # Check if email is verified
-            if not user.is_email_verified:
-
-                EmailVerification.objects.filter(
-                    email=email,
-                    verification_type='user_signup',
-                    is_verified=False
-                ).update(expires_at=timezone.now())
-
-                verification, otp = EmailVerification.create_otp_verification(
-                    email=email,
-                    verification_type='user_signup',
-                    user=user,
-                    expiry_minutes=10
-                )
-                send_signup_otp_email(email, otp, user.username)
-                logging.info(f"Unverified user {email} requested password reset - sent signup OTP")
-
-                return Response({
-                    "success": False,
-                    "message": "Your email is not verified. We've sent a new verification OTP to your email. Please verify first." # i need an explanation for this, if email is not verified, how will they receive the password reset otp?  
-                }, status=status.HTTP_400_BAD_REQUEST)
-            
             verification, otp = EmailVerification.create_otp_verification(
                 email=email,
                 verification_type='password_reset',
@@ -187,6 +183,8 @@ class VerifyPasswordResetOtpView(generics.GenericAPIView):
 class ResetPasswordView(generics.GenericAPIView):
     serializer_class = ResetPasswordSerializer
     permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'auth_password_reset'
     
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -204,6 +202,11 @@ class ResetPasswordView(generics.GenericAPIView):
             )
         
         user.set_password(new_password)
+        # Setting is_email_verified=True here fixes the unverified-user catch-22:
+        # previously a user who had never verified their email could complete the
+        # password reset flow but still couldn't log in. Completing the reset OTP
+        # flow proves the user controls the inbox, so marking them verified is safe.
+        user.is_email_verified = True
         user.save()
 
         logging.info(f"Password reset successfully for {user.email}")
@@ -266,9 +269,11 @@ class DeleteUserView(generics.DestroyAPIView):
         return Response({"message": "User account deleted successfully"}, status=status.HTTP_200_OK)   
 
 # otp verify view
-class OtpVerifyView(generics.GenericAPIView): 
-    serializer_class = VerifyRegistrationOTPSerializer 
+class OtpVerifyView(generics.GenericAPIView):
+    serializer_class = VerifyRegistrationOTPSerializer
     permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'auth_otp_verify'
             
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -303,6 +308,8 @@ class OtpVerifyView(generics.GenericAPIView):
 # resend otp view
 class ResendOtpView(generics.GenericAPIView):
     permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'auth_resend_otp'
 
     def post(self, request, *args, **kwargs):
         from django.utils import timezone
@@ -441,12 +448,15 @@ class GoogleLoginView(generics.GenericAPIView):
     serializer_class = GoogleAuthSerializer
 
     def post(self, request, role='pathfinder', *args, **kwargs):
+        # role comes from the URL kwargs: /google/pathfinder/ or /google/enabler/.
+        # Existing users who re-authenticate via Google keep their original role;
+        # the URL role parameter is only applied when creating a brand-new user.
         if role not in ['pathfinder', 'enabler']:
             return Response(
                 {"error": "Invalid role. Must be 'pathfinder' or 'enabler'."},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -454,13 +464,15 @@ class GoogleLoginView(generics.GenericAPIView):
         email = user_data['email']
 
         try:
-            # Existing user — just log them in, don't change their role
+            # Existing user — log in without altering their stored role.
             user = User.objects.get(email=email)
             logging.info(f"Existing user logged in via Google: {email}")
 
         except User.DoesNotExist:
             username = user_data['username']
 
+            # Google usernames (email prefix) can collide; suffix with an incrementing
+            # counter until a unique username is found.
             base_username = username
             counter = 1
             while User.objects.filter(username=username).exists():
@@ -473,7 +485,7 @@ class GoogleLoginView(generics.GenericAPIView):
                 first_name=user_data['first_name'],
                 last_name=user_data['last_name'],
                 role=role,
-                is_email_verified=True,  
+                is_email_verified=True,  # Google vouches for the email — no OTP needed
                 auth_provider='google',
             )
             logging.info(f"New user created via Google: {email} with role {role}")

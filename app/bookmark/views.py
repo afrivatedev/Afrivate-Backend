@@ -1,8 +1,9 @@
-from django.http import HttpResponse 
+from django.http import HttpResponse
 
 from rest_framework.generics import ListCreateAPIView, DestroyAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.exceptions import NotFound
 
 from .serializers import BookmarkSerializer, BookmarkUserSerializer, BookmarkEnablerSerializer
 from .models import Bookmark, BookmarkUser, BookmarkEnabler
@@ -75,10 +76,20 @@ class PathfinderBookmarkView(ListCreateAPIView):
 
 class PathfinderBookmarkDeleteView(DestroyAPIView):
     permission_classes = [IsAuthenticated, IsVerifiedUser, IsEnablerUser]
-    lookup_field = 'pathfinder_id' # Allows deleting by the Pathfinder's User ID
+    lookup_field = 'pathfinder_id'
 
-    def get_queryset(self):
-        return BookmarkUser.objects.filter(enabler=self.request.user)
+    def get_object(self):
+        # The URL uses the pathfinder's Django user ID (not the BookmarkUser PK or
+        # PathfinderProfileExtra PK). The serializer exposes pathfinder_user_id in list
+        # responses specifically so the frontend can pass it here without a second lookup.
+        user_id = self.kwargs['pathfinder_id']
+        try:
+            return BookmarkUser.objects.get(
+                enabler=self.request.user,
+                pathfinder__profile__user__id=user_id,
+            )
+        except BookmarkUser.DoesNotExist:
+            raise NotFound("Bookmark not found.")
     
 
 class EnablerBookmarkView(ListCreateAPIView):
@@ -101,5 +112,14 @@ class EnablerBookmarkDeleteView(DestroyAPIView):
     serializer_class = BookmarkEnablerSerializer
     lookup_field = 'enabler_id'
 
-    def get_queryset(self):
-        return BookmarkEnabler.objects.filter(pathfinder=self.request.user)
+    def get_object(self):
+        # Same pattern as PathfinderBookmarkDeleteView: URL uses the enabler's Django
+        # user ID, resolved through the profile relation to find the BookmarkEnabler row.
+        user_id = self.kwargs['enabler_id']
+        try:
+            return BookmarkEnabler.objects.get(
+                pathfinder=self.request.user,
+                enabler__profile__user__id=user_id,
+            )
+        except BookmarkEnabler.DoesNotExist:
+            raise NotFound("Bookmark not found.")

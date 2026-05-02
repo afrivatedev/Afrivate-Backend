@@ -1,6 +1,8 @@
 """
 Serializer for the profile endpoint.
 """
+import os
+
 from rest_framework import serializers
 from django.conf import settings
 from PIL import Image
@@ -9,7 +11,17 @@ from django.db import transaction
 
 import cloudinary.utils
 
-from profiles.models import *
+from django.db import models
+from profiles.models import (
+    Profile,
+    SocialLink,
+    Credential,
+    EnablerProfileExtra,
+    PathfinderProfileExtra,
+    PathfinderSkill,
+    PathfinderEducation,
+    PathfinderCertification,
+)
 import logging
 
 logger = logging.getLogger(__name__)
@@ -34,7 +46,7 @@ class SignedCloudinaryFileField(serializers.FileField):
             )
             return url
         except Exception as e:  
-            print(f"Cloudinary Signature Error: {e}")
+            logger.error(f"Cloudinary Signature Error: {e}")
             return value.url
 
 class SocialLinkSerializer(serializers.ModelSerializer):
@@ -47,11 +59,35 @@ class SocialLinkSerializer(serializers.ModelSerializer):
 class CredentialSerializer(serializers.ModelSerializer):
     """serializer for the credential model"""
     document = SignedCloudinaryFileField(required=True)
+    # Not required from the client — falls back to the uploaded file's original name
+    document_name = serializers.CharField(max_length=100, required=False, allow_blank=True)
 
     class Meta:
         model = Credential
         fields = ("id", "document_name", "document", "is_verified")
-        read_only_fields = ("id","is_verified")
+        read_only_fields = ("id", "is_verified")
+
+    def _resolve_document_name(self, validated_data):
+        # credential_file_path() renames the file to a UUID on upload, so by the time
+        # the instance is saved, document.name is the UUID path and the original name
+        # is gone. We must capture it here, before super().create() hands the file to
+        # the storage backend. InMemoryUploadedFile.name still holds the original filename
+        # at this point in the serializer lifecycle.
+        name = validated_data.get('document_name', '').strip()
+        if not name:
+            document = validated_data.get('document')
+            if document and hasattr(document, 'name'):
+                name = os.path.splitext(os.path.basename(document.name))[0]
+            validated_data['document_name'] = name or 'document'
+        return validated_data
+
+    def create(self, validated_data):
+        validated_data = self._resolve_document_name(validated_data)
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        validated_data = self._resolve_document_name(validated_data)
+        return super().update(instance, validated_data)
 
 class ProfileSerializer(serializers.ModelSerializer):
     """serializer for the enabler profile extra fields"""
@@ -79,10 +115,12 @@ class CertificationSerializer(serializers.ModelSerializer):
         fields = ("name",)
 
 class BaseProfileSerializer(serializers.ModelSerializer):
+    # base_details maps to the Profile OneToOne via source="profile".
+    # social_links is not a direct field on EnablerProfileExtra/PathfinderProfileExtra;
+    # it lives on Profile. to_representation() explicitly serialises it from the profile
+    # relation so it always appears in read responses even though it is not a model field.
     base_details = ProfileSerializer(source="profile", many=False, read_only=False, required=True)
     social_links = SocialLinkSerializer(many=True, required=False)
-    # since social_links is actually not a direct field under the EnablerProfileExtra serializer, then we have to manage
-    # its inclusion in the response manually.
     
     def _get_or_create_social_links(self, social_links_data, profile, replace=False):
         """Create social links from nested data; optionally replace existing ones."""
