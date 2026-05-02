@@ -50,7 +50,10 @@ ALLOWED_HOSTS = []
 ALLOWED_HOSTS.extend(
     filter(
         None,
-        os.environ.get("ALLOWED_HOSTS", "").split(","),
+        [
+            h.replace("https://", "").replace("http://", "").strip()
+            for h in os.environ.get("ALLOWED_HOSTS", "").split(",")
+        ],
     )
 )
 
@@ -226,6 +229,14 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 # Email configuration
+# Django email framework — used wherever send_mail() / EmailMessage is called.
+EMAIL_BACKEND = os.getenv("DJANGO_EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
+EMAIL_HOST = "smtp.gmail.com"
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", 587))
+EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True") == "True"
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
+
 SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL")
 
@@ -376,8 +387,20 @@ SITE_ID = 1 # required for django allauth
 ACCOUNT_EMAIL_VERIFICATION = "none"
 SOCIALACCOUNT_ADAPTER = 'Authentication.adapter.CustomSocialAccountAdapter'
 
-ACCOUNT_LOGIN_METHODS = {'email'}  
+ACCOUNT_LOGIN_METHODS = {'email'}
 ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*']
+
+SOCIALACCOUNT_PROVIDERS = {
+    'google': {
+        'APP': {
+            'client_id': os.getenv("GOOGLE_CLIENT_ID"),
+            'secret': os.getenv("GOOGLE_CLIENT_SECRET"),
+            'key': '',
+        },
+        'SCOPE': ['profile', 'email'],
+        'AUTH_PARAMS': {'access_type': 'online'},
+    }
+}
 
 # Cloudinary is the default storage backend (STORAGES["default"]) for all media files:
 # profile pictures (MediaCloudinaryStorage) and credentials/resumes (RawMediaCloudinaryStorage).
