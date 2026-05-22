@@ -57,7 +57,10 @@ class NotificationViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])
     def mark_all_read(self, request):
-        unread_notifications = Notification.objects.exclude(read_by=request.user)
+        user = request.user
+        unread_notifications = Notification.objects.filter(
+            Q(recipient=user) | Q(recipient__isnull=True)
+        ).exclude(read_by=user)
         count = unread_notifications.count()
 
         if unread_notifications.exists():

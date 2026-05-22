@@ -161,6 +161,8 @@ class ForgotPasswordView(generics.GenericAPIView):
 class VerifyPasswordResetOtpView(generics.GenericAPIView):
     serializer_class = VerifyPasswordResetOTPSerializer
     permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'auth_otp_verify'
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -197,10 +199,22 @@ class ResetPasswordView(generics.GenericAPIView):
             user = CustomUser.objects.get(pk=uid)
         except CustomUser.DoesNotExist:
             return Response(
-                {"error": "Invalid user."}, 
+                {"error": "Invalid user."},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+
+        verified = EmailVerification.objects.filter(
+            user=user,
+            verification_type='password_reset',
+            is_verified=True,
+        ).order_by('-created_at').first()
+
+        if not verified:
+            return Response(
+                {"error": "OTP verification required before resetting password."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         user.set_password(new_password)
         # Setting is_email_verified=True here fixes the unverified-user catch-22:
         # previously a user who had never verified their email could complete the
@@ -219,6 +233,8 @@ class ResetPasswordView(generics.GenericAPIView):
 class ChangePasswordView(generics.GenericAPIView):
     serializer_class = ChangePasswordSerializer
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'auth_password_reset'
 
     def post(self, request, *args, **kwargs):
             serializer = self.get_serializer(data=request.data)

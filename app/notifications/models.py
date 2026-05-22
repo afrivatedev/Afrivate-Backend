@@ -29,7 +29,7 @@ class Notification(models.Model):
     priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default='info')
     type = models.CharField(max_length=10, choices=TYPE_CHOICES, default='personal')
 
-    link = models.URLField(blank=True, null=True)
+    link = models.CharField(max_length=500, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     read_by = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name='read_notifications')
 

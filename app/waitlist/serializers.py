@@ -49,7 +49,7 @@ class WaitlistEmailSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         email = validated_data['email']
-        name = validated_data['name'] 
+        name = validated_data.get('name') or ''
 
         # Using atomic to ensure both records are actually created together
         with transaction.atomic():
