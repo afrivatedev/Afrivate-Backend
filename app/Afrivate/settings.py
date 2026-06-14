@@ -313,7 +313,7 @@ CORS_ALLOWED_ORIGINS = list(
 )
 
 CSRF_TRUSTED_ORIGINS = [
-        'https://afrivate-backend-production.up.railway.app',
+        'https://afrivate-backend.onrender.com',
         'https://afrivate.org', 'https://www.afrivate.org', 'https://afrivate-volunteer-module-frontend.vercel.app'
 ]
 
