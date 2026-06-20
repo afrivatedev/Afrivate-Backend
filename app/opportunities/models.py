@@ -9,8 +9,11 @@ class Opportunity(models.Model):
         VOLUNTEERING = 'volunteering', 'Volunteering'
         INTERNSHIP = 'internship', 'Internship'
         SCHOLARSHIP = 'scholarship', 'Scholarship'
-        JOB = 'job', 'Job'
-        GRANT = 'grant', 'Grant'
+        MENTORSHIP = 'mentorship', 'Mentorship'
+        FELLOWSHIP = 'fellowship', 'Fellowship'
+        CONTRACT = 'contract', 'Contract'
+        FULL_TIME = 'full_time', 'Full-time'
+        PART_TIME = 'part_time', 'Part-time'
 
     title = models.CharField(max_length=255, null=False, blank=False)
     opportunity_type = models.CharField(max_length=100, choices=Category.choices, default=Category.VOLUNTEERING, db_index=True)
