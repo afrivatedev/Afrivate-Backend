@@ -56,6 +56,12 @@ class SocialLinkSerializer(serializers.ModelSerializer):
         fields = ("id", "platform_name", "platform_url")
         read_only_fields = ("id",)
 
+    def validate_platform_url(self, value):
+        """Ensure the URL is valid and starts with https:// or append it for users who forget."""
+        if not value.startswith(("http://", "https://")):
+            value = f"https://{value}"
+        return value
+
 class CredentialSerializer(serializers.ModelSerializer):
     """serializer for the credential model"""
     document = SignedCloudinaryFileField(required=True)
