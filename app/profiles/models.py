@@ -69,7 +69,7 @@ class SocialLink(models.Model):
     """table for all social links, it is attached to the profile instance"""
 
     platform_name = models.CharField(max_length=50, blank=False,null=False)
-    platform_url = models.URLField(max_length=150, blank=False, null=False, validators=[URLValidator(schemes=['http', 'https'])])
+    platform_url = models.URLField(max_length=150, blank=False, null=False)
     profile = models.ForeignKey("Profile", on_delete=models.CASCADE, blank=False, null=False, related_name="social_links")
 
 
