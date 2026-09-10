@@ -93,6 +93,7 @@ INSTALLED_APPS = [
     'notifications',
     'applications',
     'opportunities',
+    'engagements',
     'adminpanel',
 
     # allauth for social login
@@ -148,12 +149,17 @@ WSGI_APPLICATION = 'Afrivate.wsgi.application'
 # ssl_require=not DEBUG encrypts DB connections in production (DEBUG=0) and disables
 # SSL for local dev (DEBUG=1), where the local PostgreSQL instance typically has no cert.
 # A previous version had ssl_require=not True (always False) — that was a security bug.
+db_config = dj_database_url.parse(
+    os.environ.get("DB_URL", "sqlite:///db.sqlite3"),
+    conn_max_age=600,
+    ssl_require=not DEBUG,
+)
+if db_config.get("ENGINE") == "django.db.backends.sqlite3" and "OPTIONS" in db_config:
+    if "sslmode" in db_config["OPTIONS"]:
+        del db_config["OPTIONS"]["sslmode"]
+
 DATABASES = {
-    "default": dj_database_url.parse(
-        os.environ.get("DB_URL"),
-        conn_max_age=600,
-        ssl_require=not DEBUG,
-    )
+    "default": db_config
 }
 
 STORAGES = {
