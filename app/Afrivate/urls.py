@@ -51,6 +51,7 @@ urlpatterns = [
     path("api/bookmark/", include("bookmark.urls")),
     path("api/notify/", include("notifications.urls")),
     path("api/opportunities/", include("opportunities.urls")),
+    path("api/engagements/", include("engagements.urls")),
     path("api/applications/", include("applications.urls")),
     path("api/admin/", include("adminpanel.urls")),  # internal admin dashboard (AdminUser auth only)
 ]
