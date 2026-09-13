@@ -94,6 +94,7 @@ INSTALLED_APPS = [
     'applications',
     'opportunities',
     'adminpanel',
+    'organizations',
 
     # allauth for social login
     'allauth',
@@ -173,6 +174,8 @@ STORAGES = {
 MAX_PROFILE_PIC_MB = 5
 PROFILE_PIC_ALLOWED_FORMATS = {"JPEG", "JPG", "PNG", "WEBP"}
 
+MAX_ORG_DOCUMENT_MB = int(os.getenv("MAX_ORG_DOCUMENT_MB", 10))
+
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
@@ -246,9 +249,7 @@ GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 
 RESEND_API_KEY = os.getenv("RESEND_API_KEY")
 
-# ScopedRateThrottle is used project-wide. Each auth view sets throttle_scope to one
-# of the keys below. The counts are stored in the Redis cache (CACHES["default"]).
-# To add a new scope: add a key here AND set throttle_scope on the view class.
+
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
@@ -268,6 +269,10 @@ REST_FRAMEWORK = {
         'admin_login':          '10/hour',
         'auth_forgot_password': '5/hour',
         'auth_password_reset':  '10/hour',
+        'org_create':                  '10/hour',
+        'org_document_upload':         '60/hour',
+        'org_representative_register': '10/hour',
+        'org_vouch':                   '10/hour',
     },
 }
 
@@ -282,11 +287,7 @@ SWAGGER_SETTINGS = {
     }
 }
 
-# ROTATE_REFRESH_TOKENS + BLACKLIST_AFTER_ROTATION: every token refresh issues a new
-# refresh token and immediately invalidates the old one. This means a stolen refresh
-# token can only be used once before it is blacklisted.
-# CustomTokenObtainPairSerializer injects 'role' and 'email' into the JWT payload
-# so the frontend can read them without a separate /me endpoint.
+
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),
     'REFRESH_TOKEN_LIFETIME': timedelta(hours=6),
@@ -297,9 +298,7 @@ SIMPLE_JWT = {
     'TOKEN_OBTAIN_SERIALIZER': 'user_database.serializers.CustomTokenObtainPairSerializer',
 }
 
-# CORS_ALLOWED_ORIGINS env var (comma-separated) is merged with the hardcoded defaults
-# at startup, using a set to deduplicate. This lets new frontend origins (e.g. a staging
-# deployment) be added via Railway env vars without touching code.
+
 _CORS_ORIGINS_DEFAULT = [
     "http://localhost:3000",
     "http://localhost:3001",  # admin dashboard dev server
