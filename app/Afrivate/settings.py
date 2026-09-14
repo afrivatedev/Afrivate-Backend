@@ -43,8 +43,7 @@ if DEBUG:
     SITE_DOMAIN = "http://127.0.0.1:8000"
     FRONTEND_URL = "http://localhost:3000"
 else:
-    # Fall back to the Railway/Vercel URLs if env vars are absent in production.
-    SITE_DOMAIN = os.environ.get("SITE_DOMAIN",'https://afrivate-backend-production.up.railway.app')
+    SITE_DOMAIN = os.environ.get("SITE_DOMAIN",'https://afrivate-backend.onrender.com')
     FRONTEND_URL = os.environ.get("FRONTEND_URL",'https://afrivate-volunteer-module-frontend.vercel.app')
 
 ALLOWED_HOSTS = []
