@@ -24,6 +24,7 @@ class Opportunity(models.Model):
     is_open = models.BooleanField(default=True,db_index=True)
     # Optional applicant target set by the enabler; null means no target.
     target_applicants = models.PositiveIntegerField(null=True, blank=True)
+    role_skill_tags = models.JSONField(default=list, blank=True, help_text="List of skills developed in this opportunity")
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='created_opportunities')  # very important for permissions and filtering
 
     class Meta:
