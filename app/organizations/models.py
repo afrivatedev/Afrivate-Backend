@@ -1,15 +1,15 @@
 """
 Organization Verification Layer — see AfriVate Organization Verification PRD.
 
- 1 (org onboarding) 
- 2 (representative registration) only.
-Admin review 3
-vouching  4
-CAC API integration  5
+Sprint 1 (org onboarding), Sprint 2 (representative registration), Sprint 3
+(admin review — see views_admin.py) and Sprint 4 (Tier 2 vouching — see
+OrganizationVouch and views.OrganizationVouchCreateView) are implemented.
 
-are not implemented yet — several fields below (registry_verified_at,
-vouched_by_org, reviewed_by_admin, verified_by_admin) exist as part of the PRD's
-data model but are only written to by that future work.
+Sprint 5 (automated CAC lookup API integration) is not implemented — it needs
+a vendor decision (Dojah/Mono/Youverify) and live API credentials, neither of
+which are engineering calls. Until then, `registry_verified_at` stays unwritten
+and Tier 1 approval is admin sign-off on the uploaded certificate alone, exactly
+as the PRD's "Note on sequencing" (5.1) describes for the pre-automation period.
 """
 
 import os
@@ -76,14 +76,14 @@ class Organization(models.Model):
     country = models.CharField(max_length=100)
     description = models.TextField(blank=True)
     location = models.CharField(max_length=255, blank=True)
+    website = models.URLField(max_length=300, blank=True)
 
-    # Tier 1 — registry verification 
-    org_registered = models.BooleanField(default=False)
+    # Tier 1 — registry verification
     registry_type = models.CharField(max_length=10, choices=RegistryType.choices, null=True, blank=True)
     registry_id = models.CharField(max_length=100, null=True, blank=True)
     registry_verified_at = models.DateTimeField(null=True, blank=True)
 
-    # Optional NGO-only credibility signal 
+    # Optional NGO-only credibility signal
     scuml_id = models.CharField(max_length=100, null=True, blank=True)
     scuml_verified_at = models.DateTimeField(null=True, blank=True)
 
@@ -92,10 +92,14 @@ class Organization(models.Model):
         max_length=20, choices=TierStatus.choices, default=TierStatus.ACTIVE, db_index=True
     )
 
-    # Tier 2 vouching path 
+    # Tier 2 vouching path
     vouched_by_org = models.ForeignKey(
         'self', on_delete=models.SET_NULL, null=True, blank=True, related_name='vouched_organizations'
     )
+
+    # Internal flag to indicate if the organization has been approved by an admin for Tier 2
+    tier_2_admin_approved = models.BooleanField(default=False)
+
     verification_notes = models.TextField(blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -128,7 +132,6 @@ class OrganizationDocument(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='documents')
     document_type = models.CharField(max_length=30, choices=DocumentType.choices, db_index=True)
-    proof_of_work_description = models.TextField(blank=True, help_text="Optional description for proof of work documents.")
 
     file = models.FileField(
         storage=PrivateRawMediaCloudinaryStorage(),
@@ -167,24 +170,6 @@ class OrganizationSocialLink(models.Model):
 
     def __str__(self):
         return f"{self.organization.name} — {self.get_platform_display()}"
-
-     
-class OrganizationInvitationCode(models.Model):
-    """Present a unique invitation code for an organization rep to onboard."""
-
-    class Meta:
-        verbose_name = "Organization Invitation Code"
-        verbose_name_plural = "Organization Invitation Codes"
-
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='invitation_codes')
-    code = models.CharField(max_length=20, unique=True)
-
-    created_at = models.DateTimeField(auto_now_add=True)
-    expires_at = models.DateTimeField()
-
-    def __str__(self):
-        return f"{self.organization.name} — {self.code}"
 
 
 class OrganizationRepresentative(models.Model):
@@ -249,6 +234,44 @@ class OrganizationRepresentative(models.Model):
     def __str__(self):
         return f"{self.full_name} @ {self.organization.name} ({self.verification_status})"
 
+    @property
+    def can_attest(self):
+        """Whether this representative may currently attest engagements on the
+        organization's behalf (PRD §6) — independent of the organization's own
+        tier. No engagements/attestation system exists in this codebase yet;
+        this is the single source of truth for that future gate to check."""
+        return self.verification_status == self.VerificationStatus.VERIFIED
+
+
+class OrganizationVouch(models.Model):
+    """A Tier 1 (or admin-approved Tier 2) organization vouching for a Tier 3
+    applicant (PRD §5.2 vouching path, Sprint 4). Creating one immediately
+    promotes the target organization to Tier 2 — see
+    views.OrganizationVouchCreateView for the eligibility checks this model
+    itself doesn't enforce (those depend on both organizations' live tier).
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    from_organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name='vouches_given'
+    )
+    to_organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name='vouches_received'
+    )
+    vouch_text = models.TextField()
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='organization_vouches_submitted',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('from_organization', 'to_organization')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.from_organization.name} vouches for {self.to_organization.name}"
+
 
 class VerificationAuditLog(models.Model):
     """Present an append-only trail for org/representative verification events.
@@ -271,6 +294,8 @@ class VerificationAuditLog(models.Model):
         TIER_DOWNGRADED = 'tier_downgraded', 'Tier Downgraded'
         SUSPENDED = 'suspended', 'Suspended'
         REINSTATED = 'reinstated', 'Reinstated'
+        INFO_REQUESTED = 'info_requested', 'More Information Requested'
+        REVOKED = 'revoked', 'Revoked'
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     entity_type = models.CharField(max_length=20, choices=EntityType.choices, db_index=True)
