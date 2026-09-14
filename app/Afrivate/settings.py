@@ -93,6 +93,7 @@ INSTALLED_APPS = [
     'notifications',
     'applications',
     'opportunities',
+    'engagements',
     'adminpanel',
 
     # allauth for social login
@@ -154,7 +155,6 @@ DATABASES = {
         conn_max_age=600,
         ssl_require=not DEBUG,
     )
-}
 
 STORAGES = {
     "default": {
