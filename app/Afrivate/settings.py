@@ -319,7 +319,8 @@ CORS_ALLOWED_ORIGINS = list(
 
 CSRF_TRUSTED_ORIGINS = [
         'https://afrivate-backend.onrender.com',
-        'https://afrivate.org', 'https://www.afrivate.org', 'https://afrivate-volunteer-module-frontend.vercel.app', 'https://afrivate-admin-frontend.onrender.com'
+        'https://afrivate.org', 'https://www.afrivate.org', 'https://afrivate-volunteer-module-frontend.vercel.app', 'https://afrivate-admin-frontend.onrender.com',
+        'https://afrivate-backend-0z4m.onrender.com','https://afrivate-volunteer-module-fro-git-565bed-afrivate-devs-projects.vercel.app'
 ]
 
 CORS_ALLOW_CREDENTIALS = True
