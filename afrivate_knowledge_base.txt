@@ -1,0 +1,50 @@
+# Afrivate Knowledge Base Articles
+
+Here are some standard knowledge base articles tailored to the Afrivate platform. You can copy and paste these into the Django Admin dashboard.
+
+IMPORTANT: When adding these in the admin panel, make sure you set the Status to "Approved", otherwise the AI will ignore them!
+
+---
+
+Article 1: Resetting a Forgotten Password
+Title: How to reset your password
+Category: Account Management
+Status: Approved
+Description: User has forgotten their password and cannot log into their Afrivate account.
+Solution: To reset your password, go to the login page and click on the "Forgot Password?" link. Enter the email address associated with your Afrivate account. You will receive an email with a secure link to reset your password. Click the link and enter your new password. If you don't see the email, please check your spam folder.
+
+---
+
+Article 2: Applying for Volunteer Opportunities
+Title: How to apply for a volunteer opportunity
+Category: Volunteering
+Status: Approved
+Description: A volunteer wants to find and apply for new opportunities posted by organizations.
+Solution: To apply for a volunteer opportunity, log into your Pathfinder dashboard and click on "Available Opportunities" in the left sidebar. Browse or search the list of open roles. Click on an opportunity to view its details, requirements, and duration. If you are a good fit, click the "Apply" button and submit your application. You can track the status of your applications under the "My Applications" tab.
+
+---
+
+Article 3: Viewing and Downloading Credentials
+Title: How to view and download volunteer credentials
+Category: Credentials
+Status: Approved
+Description: A user wants to access the certificates or credentials they earned after completing a volunteer engagement.
+Solution: Once an organization verifies that you have successfully completed a volunteer engagement, your credentials will automatically be issued to your profile. To view them, navigate to the "My Experience" section in your dashboard. Here, you will see a list of your completed engagements and a button to view, download, or share your official Afrivate certificate.
+
+---
+
+Article 4: Organizations Posting Opportunities
+Title: How organizations can post new volunteer opportunities
+Category: Organizations
+Status: Approved
+Description: An organization administrator needs to create a new volunteer listing to attract applicants.
+Solution: Organization administrators can post new opportunities by logging into their Organization Dashboard. Navigate to the "Opportunities" tab and click "Create New Opportunity". Fill in the required details including the role title, description, skills required, and the expected time commitment. Once submitted, the opportunity will become visible to all active volunteers on the platform.
+
+---
+
+Article 5: Editing Profile Information
+Title: How to update your profile information
+Category: Account Management
+Status: Approved
+Description: A user wants to change their personal details, contact information, or upload a new profile picture.
+Solution: To update your profile, log into your account and click on the "Profile" tab in the left sidebar, then select "Edit Profile". From here, you can update your contact information, bio, skills, and upload a new profile photo. Remember to click "Save Changes" at the bottom of the page when you are finished.

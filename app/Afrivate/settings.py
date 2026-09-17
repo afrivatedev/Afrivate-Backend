@@ -95,6 +95,7 @@ INSTALLED_APPS = [
     'engagements',
     'adminpanel',
     'organizations',
+    'support',
 
     # allauth for social login
     'allauth',
@@ -302,6 +303,7 @@ SIMPLE_JWT = {
 _CORS_ORIGINS_DEFAULT = [
     "http://localhost:3000",
     "http://localhost:3001",  # admin dashboard dev server
+    "http://localhost:3002",
     "https://afrivate-tech.github.io",
     "https://afrivate-backend-production.up.railway.app",
     "https://afrivate.org",
