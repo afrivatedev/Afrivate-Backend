@@ -30,6 +30,12 @@ class ApplicationSerializer(serializers.ModelSerializer):
                 return None
 
     def validate_opportunity(self, value):
+        # Scraped listings have no Afrivate owner to receive the application;
+        # users apply on the original site (the opportunity's `link`).
+        if value.is_external:
+            raise serializers.ValidationError(
+                "This opportunity is hosted on an external site. Apply using the opportunity link."
+            )
         # Prevent double applications logic is handled by Meta unique_together, 
         if not value.is_open:
             raise serializers.ValidationError("This Opportunity is no longer available.")

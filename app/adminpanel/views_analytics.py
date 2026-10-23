@@ -78,7 +78,7 @@ def _analytics(date_from, date_to):
 
     # Organization activity — opportunities posted per enabler, most active first
     org_activity = list(
-        Opportunity.objects.values(
+        Opportunity.objects.filter(created_by__isnull=False).values(
             'created_by__id', 'created_by__username', 'created_by__email',
             'created_by__profile__enabler_extra__name',
         )

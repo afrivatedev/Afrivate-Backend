@@ -4,9 +4,9 @@ role and which field (tech / business / marketing) it belongs to.
 """
 import re
 
-from .models import ExternalOpportunity
+from opportunities.models import Opportunity
 
-Field = ExternalOpportunity.Field
+Field = Opportunity.Field
 
 # Matched against the title, source career categories and description.
 # Order matters: the first field with the most hits wins ties by this order.
