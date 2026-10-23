@@ -55,7 +55,6 @@ urlpatterns = [
     path("api/applications/", include("applications.urls")),
     path("api/admin/", include("adminpanel.urls")),  # internal admin dashboard (AdminUser auth only)
     path("api/organizations/", include("organizations.urls")),
-    path("api/external-opportunities/", include("external_opportunities.urls")),
 ]
 
 # Media files are served by Cloudinary (see STORAGES in settings.py),

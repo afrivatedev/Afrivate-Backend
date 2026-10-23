@@ -10,7 +10,7 @@ from rest_framework.test import APIClient
 from user_database.models import CustomUser
 
 from .classifier import classify_field, is_remote, is_volunteer
-from .models import ExternalOpportunity
+from opportunities.models import Opportunity
 from .services import run_all_scrapers
 from .sources.myjobmag import MyJobMagScraper
 from .sources.reliefweb import ReliefWebScraper
@@ -24,7 +24,7 @@ def rw_item(id=1, title='Remote Volunteer Web Developer', body='Volunteer online
     fields = {
         'title': title,
         'body': body,
-        'how_to_apply': 'Apply at https://ngo.example.org/apply now',
+        'how_to_apply': f'Apply at https://ngo.example.org/apply/{id} now',
         'url': f'https://reliefweb.int/job/{id}',
         'date': {'created': '2026-10-01T00:00:00+00:00', 'closing': '2099-01-01T00:00:00+00:00'},
         'source': [{'name': 'Example NGO'}],
@@ -65,7 +65,7 @@ class ReliefWebScraperTests(SimpleTestCase):
         self.assertEqual(len(listings), 1)
         listing = listings[0]
         self.assertEqual(listing.field, 'tech')
-        self.assertEqual(listing.apply_url, 'https://ngo.example.org/apply')
+        self.assertEqual(listing.apply_url, 'https://ngo.example.org/apply/1')
         self.assertEqual(listing.source_url, 'https://reliefweb.int/job/1')
         self.assertEqual(listing.organization_name, 'Example NGO')
 
@@ -200,20 +200,46 @@ class ServiceTests(TestCase):
     def test_dedupes_on_rerun(self):
         self._run([rw_item()])
         self._run([rw_item(title='Remote Volunteer Web Developer (updated)')])
-        self.assertEqual(ExternalOpportunity.objects.count(), 1)
-        self.assertIn('updated', ExternalOpportunity.objects.get().title)
+        self.assertEqual(Opportunity.objects.count(), 1)
+        self.assertIn('updated', Opportunity.objects.get().title)
+
+    def test_saved_as_ownerless_opportunity(self):
+        self._run([rw_item()])
+        opp = Opportunity.objects.get()
+        self.assertIsNone(opp.created_by)
+        self.assertTrue(opp.is_external)
+        self.assertEqual(opp.source, 'reliefweb')
+        self.assertEqual(opp.opportunity_type, 'volunteering')
+        self.assertEqual(opp.organization_name, 'Example NGO')
+        self.assertEqual(opp.link, 'https://ngo.example.org/apply/1')
+        self.assertEqual(opp.first_scraped_at.date(), timezone.now().date())
+
+    def test_rescrape_keeps_source_posted_date(self):
+        self._run([rw_item()])
+        first = Opportunity.objects.get().posted_at
+        self._run([rw_item(title='Remote Volunteer Web Developer (updated)')])
+        self.assertEqual(Opportunity.objects.get().posted_at, first)
+        self.assertEqual(first.date().isoformat(), '2026-10-01')  # date the source published it
+
+    def test_duplicate_title_and_link_is_skipped_not_fatal(self):
+        # A second listing with the same title + apply link must not abort the run or the ones after it.
+        repost = rw_item(2, how_to_apply='Apply at https://ngo.example.org/apply/1 now')
+        other = rw_item(3, title='Remote Volunteer Data Analyst', body='Volunteer online with Python data work.')
+        results = self._run([rw_item(1), repost, other])
+        self.assertEqual(sorted(Opportunity.objects.values_list('external_id', flat=True)), ['1', '3'])
+        self.assertFalse(results['results'][0]['error'])
 
     def test_deactivates_listings_no_longer_returned(self):
         self._run([rw_item(1), rw_item(2)])
         self._run([rw_item(1)])
-        self.assertTrue(ExternalOpportunity.objects.get(external_id='1').is_active)
-        self.assertFalse(ExternalOpportunity.objects.get(external_id='2').is_active)
+        self.assertTrue(Opportunity.objects.get(external_id='1').is_open)
+        self.assertFalse(Opportunity.objects.get(external_id='2').is_open)
 
     def test_failed_fetch_does_not_deactivate(self):
         self._run([rw_item(1)])
         with patch.object(ReliefWebScraper, 'fetch', side_effect=RuntimeError('boom')):
             run_all_scrapers()
-        self.assertTrue(ExternalOpportunity.objects.get().is_active)
+        self.assertTrue(Opportunity.objects.get().is_open)
 
     def test_telegram_listings_survive_leaving_the_preview_window(self):
         with override_settings(TELEGRAM_CHANNELS=['ngjobs']):
@@ -222,55 +248,96 @@ class ServiceTests(TestCase):
             with patch('external_opportunities.sources.telegram.requests.get', side_effect=[response, empty]):
                 run_all_scrapers()
                 run_all_scrapers()
-        self.assertTrue(ExternalOpportunity.objects.get(source='telegram').is_active)
+        self.assertTrue(Opportunity.objects.get(source='telegram').is_open)
 
     def test_old_telegram_listings_expire(self):
-        ExternalOpportunity.objects.create(
-            source='telegram', external_id='ngjobs/1', title='Old', apply_url='https://x.org', field='tech',
+        Opportunity.objects.create(
+            source='telegram', external_id='ngjobs/1', title='Old', link='https://x.org', field='tech',
+            first_scraped_at=timezone.now() - timedelta(days=31), last_seen_at=timezone.now(),
         )
-        ExternalOpportunity.objects.update(first_scraped_at=timezone.now() - timedelta(days=31))
         with override_settings(TELEGRAM_CHANNELS=['ngjobs']):
             empty = type('R', (), {'text': '', 'raise_for_status': lambda self: None})()
             with patch('external_opportunities.sources.telegram.requests.get', return_value=empty):
                 run_all_scrapers()
-        self.assertFalse(ExternalOpportunity.objects.get().is_active)
+        self.assertFalse(Opportunity.objects.get().is_open)
 
     def test_expired_deadline_deactivated(self):
         self._run([rw_item(1, date={'created': '2026-01-01T00:00:00+00:00',
                                     'closing': (timezone.now() - timedelta(days=1)).isoformat()})])
-        self.assertFalse(ExternalOpportunity.objects.get().is_active)
+        self.assertFalse(Opportunity.objects.get().is_open)
 
 
 @override_settings(CACHES=TEST_CACHES)
-class ApiTests(TestCase):
+class ScrapedOpportunityApiTests(TestCase):
+    """Scraped listings are ordinary Opportunity rows with no owner."""
+
     def setUp(self):
         self.client = APIClient()
-        user = CustomUser.objects.create_user(
-            username='u', email='u@example.com', password='Pass123!',
+        self.pathfinder = CustomUser.objects.create_user(
+            username='pf', email='pf@example.com', password='Pass123!',
             role='pathfinder', is_email_verified=True,
         )
-        self.client.force_authenticate(user=user)
-        make = lambda i, field, active=True: ExternalOpportunity.objects.create(
-            source='reliefweb', external_id=str(i), title=f'Role {i}', apply_url='https://x.org/a',
-            field=field, is_active=active,
+        self.enabler = CustomUser.objects.create_user(
+            username='en', email='en@example.com', password='Pass123!',
+            role='enabler', is_email_verified=True,
         )
-        make(1, 'tech'); make(2, 'marketing'); make(3, 'tech', active=False)
+        self.scraped = Opportunity.objects.create(
+            title='Data Analyst Intern', opportunity_type='internship', description='Analyse data.',
+            link='https://www.myjobmag.com/job/data-intern-1', source='myjobmag', external_id='data-intern-1',
+            organization_name='Example Ltd', location='Lagos, Nigeria', field='tech',
+            deadline=timezone.now() + timedelta(days=7),
+        )
+        self.owned = Opportunity.objects.create(
+            title='Our Volunteer Role', description='d', link='https://afrivate.org/x', created_by=self.enabler,
+        )
+        self.client.force_authenticate(user=self.pathfinder)
 
-    def test_lists_only_active(self):
-        data = self.client.get(reverse('external-opportunity-list')).json()
-        self.assertEqual(data['count'], 2)
+    def test_list_includes_scraped_with_organisation_as_owner_name(self):
+        data = self.client.get('/api/opportunities/', {'is_open': 'true'}).json()
+        by_title = {o['title']: o for o in data['results']}
+        scraped = by_title['Data Analyst Intern']
+        self.assertTrue(scraped['is_external'])
+        self.assertIsNone(scraped['created_by'])
+        self.assertEqual(scraped['created_by_name'], 'Example Ltd')
+        self.assertEqual(scraped['source'], 'myjobmag')
+        self.assertEqual(scraped['location'], 'Lagos, Nigeria')
+        self.assertEqual(scraped['work_mode'], 'On-site')
+        self.assertEqual(scraped['link'], 'https://www.myjobmag.com/job/data-intern-1')
+        self.assertIsNotNone(scraped['deadline'])
+        owned = by_title['Our Volunteer Role']
+        self.assertFalse(owned['is_external'])
+        self.assertIsNone(owned['work_mode'])
 
-    def test_filter_by_opportunity_type(self):
-        ExternalOpportunity.objects.filter(external_id='1').update(opportunity_type='internship')
-        data = self.client.get(
-            reverse('external-opportunity-list'), {'opportunity_type': 'internship'}
-        ).json()
+    def test_detail_and_filters(self):
+        self.assertEqual(self.client.get(f'/api/opportunities/{self.scraped.id}/').status_code, 200)
+        data = self.client.get('/api/opportunities/', {'source': 'myjobmag'}).json()
+        self.assertEqual([o['title'] for o in data['results']], ['Data Analyst Intern'])
+        data = self.client.get('/api/opportunities/', {'opportunity_type': 'internship'}).json()
         self.assertEqual(data['count'], 1)
-        self.assertEqual(data['results'][0]['opportunity_type'], 'internship')
 
-    def test_filter_by_field(self):
-        data = self.client.get(reverse('external-opportunity-list'), {'field': 'tech'}).json()
-        self.assertEqual(data['count'], 1)
+    def test_cannot_apply_in_app_to_scraped_opportunity(self):
+        response = self.client.post('/api/applications/', {'opportunity': self.scraped.id, 'cover_letter': 'hi'})
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('external site', str(response.json()))
 
-    def test_requires_auth(self):
-        self.assertEqual(APIClient().get(reverse('external-opportunity-list')).status_code, 401)
+    def test_can_still_apply_to_owned_opportunity(self):
+        response = self.client.post('/api/applications/', {'opportunity': self.owned.id, 'cover_letter': 'hi'})
+        self.assertEqual(response.status_code, 201, response.content)
+
+    def test_enabler_cannot_edit_scraped_opportunity(self):
+        self.client.force_authenticate(user=self.enabler)
+        response = self.client.patch(f'/api/opportunities/{self.scraped.id}/', {'is_open': False}, format='json')
+        self.assertEqual(response.status_code, 403)
+
+    def test_my_opportunities_excludes_scraped(self):
+        self.client.force_authenticate(user=self.enabler)
+        data = self.client.get('/api/opportunities/mine/').json()
+        results = data['results'] if isinstance(data, dict) else data
+        self.assertEqual([o['title'] for o in results], ['Our Volunteer Role'])
+
+    def test_admin_organisation_activity_ignores_scraped(self):
+        from adminpanel.views_analytics import _analytics
+        today = timezone.now().date().isoformat()
+        activity = _analytics(today, today)['organization_activity']
+        self.assertEqual([row['enabler_id'] for row in activity], [self.enabler.id])
+        self.assertEqual(_analytics(today, today)['totals']['opportunities'], 2)

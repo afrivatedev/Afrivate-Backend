@@ -11,7 +11,7 @@ class ScrapedListing:
     title: str
     apply_url: str
     field: str
-    opportunity_type: str = 'volunteer'
+    opportunity_type: str = 'volunteering'  # an opportunities.Opportunity.Category value
     organization_name: str = ''
     description: str = ''
     source_url: str = ''

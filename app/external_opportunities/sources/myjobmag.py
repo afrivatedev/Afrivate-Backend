@@ -9,7 +9,7 @@ from django.conf import settings
 from django.utils.dateparse import parse_datetime
 
 from ..classifier import classify_field, is_remote
-from ..models import ExternalOpportunity
+from opportunities.models import Opportunity
 from .base import BaseScraper, ScrapedListing
 
 logger = logging.getLogger(__name__)
@@ -23,12 +23,19 @@ USER_AGENT = 'Afrivate/1.0 (+https://afrivate.com)'
 
 LIST_LINK = re.compile(r'<li class="job-list-li">.*?<h2>\s*<a\s+href="(/job/[^"]+)"', re.S)
 JSON_LD = re.compile(r'<script type="application/ld\+json">(.*?)</script>', re.S)
+LIST_ITEM_START = re.compile(r'<li[^>]*>', re.I)
+BLOCK_END = re.compile(r'</(?:p|li|div|h\d|ul|ol)>|<br\s*/?>', re.I)
 TAG = re.compile(r'<[^>]+>')
 SPACES = re.compile(r'\s+')
 
 
 def _plain_text(fragment):
-    return SPACES.sub(' ', html.unescape(TAG.sub(' ', html.unescape(fragment or '')))).strip()
+    """HTML (entity-escaped in the JSON-LD) -> plain text, keeping paragraph and bullet breaks."""
+    text = html.unescape(fragment or '')
+    text = BLOCK_END.sub('\n', LIST_ITEM_START.sub('\n• ', text))
+    text = html.unescape(TAG.sub(' ', text))
+    lines = (SPACES.sub(' ', line).strip() for line in text.split('\n'))
+    return '\n'.join(line for line in lines if line and line != '•')
 
 
 class MyJobMagScraper(BaseScraper):
@@ -129,7 +136,7 @@ class MyJobMagScraper(BaseScraper):
             apply_url=url,
             source_url=url,
             field=field,
-            opportunity_type=ExternalOpportunity.OpportunityType.INTERNSHIP,
+            opportunity_type=Opportunity.Category.INTERNSHIP,
             location=', '.join(p for p in (locality, 'Nigeria') if p)[:255],
             is_remote=remote,
             deadline=parse_datetime(self._iso(posting.get('validThrough'))),
