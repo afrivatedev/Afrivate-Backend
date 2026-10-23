@@ -95,6 +95,7 @@ INSTALLED_APPS = [
     'engagements',
     'adminpanel',
     'organizations',
+    'external_opportunities',
 
     # allauth for social login
     'allauth',
@@ -443,3 +444,19 @@ CELERY_RESULT_SERIALIZER = 'json'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'Africa/Lagos'
+
+# External (scraped) volunteer opportunities
+# ReliefWeb requires a pre-approved appname: https://apidoc.reliefweb.int/parameters#appname
+RELIEFWEB_APPNAME = os.getenv('RELIEFWEB_APPNAME', '')
+# Public Telegram channel usernames (no @), comma-separated, e.g. "nigeriavolunteers,lagostechjobs"
+TELEGRAM_CHANNELS = [c.strip().lstrip('@') for c in os.getenv('TELEGRAM_CHANNELS', '').split(',') if c.strip()]
+
+# MyJobMag internships (scraped HTML; set to False to switch the source off)
+MYJOBMAG_ENABLED = os.getenv('MYJOBMAG_ENABLED', 'True').lower() == 'true'
+
+CELERY_BEAT_SCHEDULE = {
+    'scrape-external-opportunities': {
+        'task': 'external_opportunities.tasks.scrape_external_opportunities',
+        'schedule': 60 * 60 * 6,  # every 6 hours
+    },
+}
