@@ -43,7 +43,7 @@ def admin_opportunity_list(request):
             'opportunity_type': opp.opportunity_type,
             'is_open': opp.is_open,
             'posted_at': opp.posted_at,
-            'created_by': opp.created_by.username,
+            'created_by': opp.created_by.username if opp.created_by else opp.organization_name,
             'bookmark_count': bookmark_count,
         })
     return JsonResponse(data, safe=False)
@@ -68,8 +68,8 @@ class OpportunityView(ListCreateAPIView):
     
     # Enable Search and Category Filtering
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
-    filterset_fields = ['opportunity_type', 'is_open'] # Exact matches
-    search_fields = ['title', 'description'] # Partial text search
+    filterset_fields = ['opportunity_type', 'is_open', 'source', 'field', 'is_remote'] # Exact matches
+    search_fields = ['title', 'description', 'organization_name'] # Partial text search
 
     def perform_create(self, serializer):
         # Automatically set created_by to the logged-in user (the "Enabler")

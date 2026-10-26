@@ -6,12 +6,23 @@ from .models import Opportunity
 class OpportunitySerializer(serializers.ModelSerializer):
     created_by_name = serializers.SerializerMethodField()
     applications_count = serializers.SerializerMethodField()
+    is_external = serializers.BooleanField(read_only=True)
+    work_mode = serializers.SerializerMethodField()
 
     def get_created_by_name(self, obj):
+        if obj.created_by_id is None:
+            # Scraped listing: no Afrivate owner, so show the hiring organisation.
+            return obj.organization_name or None
         try:
             return obj.created_by.profile.enabler_extra.name
         except Exception:
             return obj.created_by.username
+
+    def get_work_mode(self, obj):
+        # Enablers describe work mode inside the description; only scraped listings carry it as data.
+        if not obj.is_external:
+            return None
+        return 'Remote' if obj.is_remote else 'On-site'
 
     def get_applications_count(self, obj):
         return obj.applicants.count()
@@ -23,9 +34,14 @@ class OpportunitySerializer(serializers.ModelSerializer):
             'id', 'title', 'opportunity_type', 'description',
             'link', 'posted_at', 'is_open', 'created_by_name', 'created_by',
             'target_applicants', 'applications_count',
+            # Scraped listings (blank/null for opportunities posted by enablers)
+            'is_external', 'source', 'organization_name', 'location', 'work_mode',
+            'deadline', 'field',
         ]
-        
-        read_only_fields = ['created_by', 'posted_at']
+
+        read_only_fields = [
+            'created_by', 'posted_at', 'source', 'organization_name', 'location', 'deadline', 'field',
+        ]
         # UniqueTogetherValidator catches (title, link) duplicates and returns a clean 400.
         # The model also has unique_together which would raise an IntegrityError without this.
         validators = [
