@@ -39,13 +39,15 @@ class Opportunity(models.Model):
         BUSINESS = 'business', 'Business'
         MARKETING = 'marketing', 'Marketing'
 
-    source = models.CharField(max_length=50, blank=True, default='', db_index=True)  # e.g. "myjobmag"
-    external_id = models.CharField(max_length=255, blank=True, default='')  # id of the listing on the source
-    organization_name = models.CharField(max_length=255, blank=True, default='')
-    location = models.CharField(max_length=255, blank=True, default='')
-    is_remote = models.BooleanField(default=False)
+    # db_default keeps a database-level default on these NOT NULL columns, so code that predates
+    # them (and inserts without them) keeps working while a deploy and its migration roll out.
+    source = models.CharField(max_length=50, blank=True, default='', db_default='', db_index=True)  # e.g. "myjobmag"
+    external_id = models.CharField(max_length=255, blank=True, default='', db_default='')  # id of the listing on the source
+    organization_name = models.CharField(max_length=255, blank=True, default='', db_default='')
+    location = models.CharField(max_length=255, blank=True, default='', db_default='')
+    is_remote = models.BooleanField(default=False, db_default=False)
     deadline = models.DateTimeField(null=True, blank=True)
-    field = models.CharField(max_length=20, choices=Field.choices, blank=True, default='', db_index=True)
+    field = models.CharField(max_length=20, choices=Field.choices, blank=True, default='', db_default='', db_index=True)
     first_scraped_at = models.DateTimeField(null=True, blank=True)
     last_seen_at = models.DateTimeField(null=True, blank=True)
 
