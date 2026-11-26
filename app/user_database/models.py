@@ -6,6 +6,7 @@ from django.core.validators import EmailValidator
 
 from rest_framework_simplejwt.tokens import RefreshToken
 
+import re
 import uuid
 from datetime import timedelta
 
@@ -166,3 +167,13 @@ class EmailVerification(models.Model):
     def is_expired(self):
         """Check if token has expired"""
         return timezone.now() >= self.expires_at
+
+    # Link tokens and reset tokens come from uuid4().hex: 32 lowercase hex
+    # characters. OTPs are 6 digits. They share one column, so endpoints that
+    # must only accept one kind check the shape before trusting the value.
+    _LINK_TOKEN_RE = re.compile(r'^[0-9a-f]{32}$')
+
+    @classmethod
+    def is_link_token(cls, value):
+        """True only for a uuid-style token, never for a 6-digit OTP."""
+        return isinstance(value, str) and bool(cls._LINK_TOKEN_RE.fullmatch(value))

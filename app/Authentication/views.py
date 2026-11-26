@@ -201,11 +201,16 @@ class ResetPasswordView(generics.GenericAPIView):
 
         # The reset is authorized solely by the single-use token issued at OTP
         # verification — never by uid, which is guessable.
-        verification = EmailVerification.objects.filter(
-            token=token,
-            verification_type='password_reset',
-            is_verified=True,
-        ).select_related('user').first()
+        # Only a token issued by VerifyPasswordResetOtpView (uuid-style) counts.
+        # A 6-digit OTP must never work here, even if some other endpoint has
+        # marked its record as verified.
+        verification = None
+        if EmailVerification.is_link_token(token):
+            verification = EmailVerification.objects.filter(
+                token=token,
+                verification_type='password_reset',
+                is_verified=True,
+            ).select_related('user').first()
 
         if not verification or verification.user is None or verification.is_expired():
             return Response(
@@ -414,6 +419,8 @@ class ResendOtpView(generics.GenericAPIView):
 class VerifyEmailView(generics.GenericAPIView):
     permission_classes = [AllowAny]
     serializer_class = VerifyEmailSerializer
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'auth_verify_email'  # maps to 'auth_verify_email' in settings.py
     
     def get(self, request, *args, **kwargs):
         token = request.query_params.get('token')

@@ -210,9 +210,20 @@ class VerifyEmailSerializer(serializers.Serializer):
     # email = serializers.EmailField()    
     token = serializers.CharField(max_length=64)
 
+    # This endpoint is for email *links* only (waitlist confirmation). It has
+    # no email field, so it must never accept a 6-digit OTP or a password-reset
+    # record: anyone could otherwise guess codes across every pending record.
+    LINK_VERIFICATION_TYPES = ('waitlist', 'user_signup')
+
     def validate_token(self, value):
+        if not EmailVerification.is_link_token(value):
+            raise serializers.ValidationError("Invalid verification token.")
+
         try:
-            self.verification_obj = EmailVerification.objects.get(token=value)
+            self.verification_obj = EmailVerification.objects.get(
+                token=value,
+                verification_type__in=self.LINK_VERIFICATION_TYPES,
+            )
             
             if self.verification_obj.is_verified:
                 raise serializers.ValidationError("This verification link has already been used.")

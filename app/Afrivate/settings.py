@@ -266,6 +266,7 @@ REST_FRAMEWORK = {
         'auth_login':           '10/hour',
         'auth_otp_verify':      '10/hour',
         'auth_resend_otp':      '5/hour',
+        'auth_verify_email':    '30/hour',
         'admin_login':          '10/hour',
         'auth_forgot_password': '5/hour',
         'auth_password_reset':  '10/hour',
