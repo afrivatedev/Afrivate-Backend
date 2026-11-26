@@ -26,12 +26,22 @@ def log_action(admin, action_type, target_entity_type, target_entity_id, reason=
     )
 
 
+FORMULA_PREFIXES = ('=', '+', '-', '@', '\t', '\r')
+
+
+def _safe_cell(value):
+    """Stop spreadsheet formula injection: text starting with = + - @ runs as a formula in Excel/Sheets."""
+    if isinstance(value, str) and value.startswith(FORMULA_PREFIXES):
+        return "'" + value
+    return value
+
+
 def csv_response(filename, header, rows):
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     writer = csv.writer(response)
     writer.writerow(header)
-    writer.writerows(rows)
+    writer.writerows([_safe_cell(v) for v in row] for row in rows)
     return response
 
 

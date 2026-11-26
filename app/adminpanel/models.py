@@ -22,6 +22,8 @@ class AdminUser(models.Model):
     password = models.CharField(max_length=128)
     is_active = models.BooleanField(default=True)
     last_login = models.DateTimeField(null=True, blank=True)
+    # Bumped on logout; tokens issued with an older value are rejected.
+    token_version = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

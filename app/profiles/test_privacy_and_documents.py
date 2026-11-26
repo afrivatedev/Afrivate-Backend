@@ -1,7 +1,8 @@
 """
 Privacy tests for profiles and documents.
 
-1. Other users must not see contact details or documents on someone's profile.
+1. Only verified users can see a profile at all. Verified users see contact email and phone,
+   never the street address and never documents. Unverified users are refused.
 2. Owners must still see their own details (regression).
 3. Documents (ID files, credentials, CVs) are private: uploads are stored as
    'authenticated' and the links we hand out expire.
@@ -85,16 +86,18 @@ class PublicProfilePrivacyTests(TestCase):
         self.client.force_authenticate(user=viewer)
         return self.client.get(f'/api/profile/pathfinderprofile/user/{self.owner.id}/')
 
-    def test_other_user_cannot_see_pathfinder_contact_details(self):
+    def test_verified_user_sees_pathfinder_contact_email_and_phone(self):
         response = self._public_pathfinder(self.viewer)
         self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['base_details']['contact_email'], SECRET_EMAIL)
+        self.assertEqual(response.data['base_details']['phone_number'], SECRET_PHONE)
+        self.assertEqual(response.data['gmail'], SECRET_GMAIL)
+
+    def test_verified_user_never_sees_street_address(self):
+        response = self._public_pathfinder(self.viewer)
         body = response.content.decode()
-        for secret in (SECRET_PHONE, SECRET_EMAIL, SECRET_ADDRESS, SECRET_GMAIL):
-            self.assertNotIn(secret, body)
-        self.assertNotIn('contact_email', body)
-        self.assertNotIn('phone_number', body)
+        self.assertNotIn(SECRET_ADDRESS, body)
         self.assertNotIn('address', body)
-        self.assertNotIn('gmail', body)
 
     def test_other_user_cannot_see_documents_on_pathfinder_profile(self):
         response = self._public_pathfinder(self.viewer)
@@ -108,19 +111,27 @@ class PublicProfilePrivacyTests(TestCase):
         self.assertEqual(response.data['base_details']['state'], 'Lagos')
         self.assertEqual(response.data['base_details']['bio'], 'Public bio')
 
-    def test_public_enabler_hides_contact_details(self):
+    def test_verified_user_sees_organisation_contact_email_and_phone(self):
         self.client.force_authenticate(user=self.viewer)
         response = self.client.get(f'/api/profile/enablerprofile/user/{self.org.id}/')
         self.assertEqual(response.status_code, 200)
-        body = response.content.decode()
-        self.assertNotIn('hr@org.example.com', body)
-        self.assertNotIn('+2348000000222', body)
-        self.assertNotIn('Org Street 1', body)
         self.assertEqual(response.data['name'], 'Org Ltd')
+        self.assertEqual(response.data['base_details']['contact_email'], 'hr@org.example.com')
+        self.assertEqual(response.data['base_details']['phone_number'], '+2348000000222')
         self.assertEqual(response.data['base_details']['website'], 'https://org.example.com')
+
+    def test_organisation_street_address_stays_hidden(self):
+        self.client.force_authenticate(user=self.viewer)
+        response = self.client.get(f'/api/profile/enablerprofile/user/{self.org.id}/')
+        self.assertNotIn('Org Street 1', response.content.decode())
 
     def test_unverified_user_still_blocked(self):
         response = self._public_pathfinder(self.unverified)
+        self.assertEqual(response.status_code, 403)
+
+    def test_unverified_user_blocked_from_organisation_contact(self):
+        self.client.force_authenticate(user=self.unverified)
+        response = self.client.get(f'/api/profile/enablerprofile/user/{self.org.id}/')
         self.assertEqual(response.status_code, 403)
 
     def test_owner_still_sees_own_details(self):

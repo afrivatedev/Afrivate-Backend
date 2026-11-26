@@ -8,6 +8,7 @@ urlpatterns = [
     # Sprint 1 — admin auth (PRD 11.1)
     path('auth/login/', views_auth.AdminLoginView.as_view(), name='admin-login'),
     path('auth/refresh/', views_auth.AdminTokenRefreshView.as_view(), name='admin-refresh'),
+    path('auth/logout/', views_auth.AdminLogoutView.as_view(), name='admin-logout'),
     path('auth/me/', views_auth.AdminMeView.as_view(), name='admin-me'),
 
     # Sprint 2 — directory & profiles (PRD 6.1–6.2)

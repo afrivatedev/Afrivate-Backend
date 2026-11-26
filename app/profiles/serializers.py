@@ -361,16 +361,18 @@ class ApplicantProfileSerializer(serializers.ModelSerializer):
         ]
 
 class PublicProfileSerializer(serializers.ModelSerializer):
-    """Base-profile fields that any signed-in user may see about someone else.
-    Leaves out contact details (email, phone, address) by design."""
+    """Base-profile fields a verified user may see about someone else.
+    Contact email and phone are included (the views require a verified user).
+    The street address and all documents stay private."""
     class Meta:
         model = Profile
-        fields = ("id", "profile_pic", "bio", "state", "country", "website")
+        fields = ("id", "profile_pic", "bio", "state", "country", "website", "contact_email", "phone_number")
         read_only_fields = fields
 
 
 class PublicPathfinderProfileSerializer(serializers.ModelSerializer):
-    """What other users may see of a pathfinder. No contact details, no documents."""
+    """What a verified user may see of a pathfinder: profile and contact email/phone.
+    No street address, no documents."""
     base_details = PublicProfileSerializer(source="profile", read_only=True)
     skills = SkillSerializer(source="pathfinder_skills", many=True, read_only=True)
     educations = EducationSerializer(source="pathfinder_education", many=True, read_only=True)
@@ -381,14 +383,14 @@ class PublicPathfinderProfileSerializer(serializers.ModelSerializer):
         model = PathfinderProfileExtra
         fields = [
             'id', 'first_name', 'last_name', 'other_name', 'title',
-            'about', 'work_experience', 'languages',
+            'about', 'work_experience', 'languages', 'gmail',
             'base_details', 'social_links', 'skills', 'educations', 'certifications',
         ]
         read_only_fields = fields
 
 
 class PublicEnablerProfileSerializer(serializers.ModelSerializer):
-    """What other users may see of an organisation. No contact details."""
+    """What a verified user may see of an organisation: profile and contact email/phone. No street address."""
     base_details = PublicProfileSerializer(source="profile", read_only=True)
     social_links = SocialLinkSerializer(source="profile.social_links", many=True, read_only=True)
 

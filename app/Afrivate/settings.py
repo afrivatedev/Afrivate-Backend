@@ -332,6 +332,11 @@ CSRF_TRUSTED_ORIGINS = [
 
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_ALL_ORIGINS = False
+# Admin dashboard sends this header on every request; it is the CSRF guard for cookie sessions.
+from corsheaders.defaults import default_headers as _cors_default_headers  # noqa: E402
+CORS_ALLOW_HEADERS = (*_cors_default_headers, "x-admin-request")
+# Admin session cookies use SameSite=None so the cross-site call works (needs Secure). See SECURITY.md.
+ADMIN_COOKIE_SAMESITE = os.getenv("ADMIN_COOKIE_SAMESITE", "None")
 PASSWORD_RESET_TIMEOUT = 3600  # 1 hour in seconds
 
 
