@@ -39,6 +39,13 @@ and set it as an environment variable.
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = bool(int(os.environ.get("DEBUG","0"))) # set to 0 in production
 
+# Render sets RENDER=true on every service. DEBUG exposes stack traces and
+# settings to anyone, so it is forced off there even if someone sets DEBUG=1.
+if os.environ.get("RENDER") == "true" and DEBUG:
+    import sys
+    print("WARNING: DEBUG=1 is set on Render; forcing DEBUG off. Remove it from the Render environment.", file=sys.stderr)
+    DEBUG = False
+
 if DEBUG:
     SITE_DOMAIN = "http://127.0.0.1:8000"
     FRONTEND_URL = "http://localhost:3000"
