@@ -40,8 +40,17 @@ class EngagementRecord(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    # Once a record is waiting for, or has passed, the organisation's sign-off,
+    # its hours, dates and task log are frozen. A certificate is issued from
+    # these numbers, so they must not change afterwards.
+    LOCKED_STATUSES = ('pending_attestation', 'attested')
+
     class Meta:
         ordering = ['-created_at']
+
+    @property
+    def is_locked(self):
+        return self.status in self.LOCKED_STATUSES
 
     def __str__(self):
         return f"{self.role_title} - {self.volunteer.username}"

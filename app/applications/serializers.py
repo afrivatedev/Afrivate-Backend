@@ -2,6 +2,7 @@ from rest_framework import serializers
 from .models import Application
 from profiles.serializers import PathfinderProfileSerializer, SignedCloudinaryFileField
 from profiles.models import PathfinderProfileExtra
+from Afrivate.private_files import signed_private_url
 
 class ApplicationSerializer(serializers.ModelSerializer):
     user_name = serializers.ReadOnlyField(source='user.username')
@@ -100,18 +101,10 @@ class ApplicationListSerializer(serializers.ModelSerializer):
             return None
         
     def get_profile_resume_url(self, obj):
-        """Returns the signed URL of the credential used as resume"""
+        """Returns a short-lived private link to the credential used as resume."""
         try:
             if obj.profile_resume and obj.profile_resume.document:
-                import cloudinary.utils
-                url, _ = cloudinary.utils.cloudinary_url(
-                    obj.profile_resume.document.name,
-                    resource_type="raw",
-                    type="upload",
-                    sign_url=True,
-                    secure=True
-                )
-                return url
+                return signed_private_url(obj.profile_resume.document.name)
         except Exception:
             return None
         return None

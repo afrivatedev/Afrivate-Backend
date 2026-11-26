@@ -7,7 +7,7 @@ import uuid
 from django.conf import settings
 from django.core.validators import URLValidator
 from django.db import models
-from cloudinary_storage.storage import RawMediaCloudinaryStorage
+from Afrivate.private_files import PrivateRawMediaCloudinaryStorage
 
 PROFILE_UPLOAD_PATH = 'afrivate' 
 
@@ -77,7 +77,9 @@ class Credential(models.Model):
     """model to handle both pathfinder and Enablers government issued credentials, it is attached to the user instance"""
     document_name = models.CharField(max_length=100)
     # document = models.FileField(storage=RawMediaCloudinaryStorage(tag_options={'type': 'private'}), upload_to=credential_file_path, max_length=255)
-    document = models.FileField(storage=RawMediaCloudinaryStorage(), upload_to=credential_file_path, max_length=255)
+    # Private: ID documents and certificates are never publicly reachable. Read
+    # access is only through short-lived signed links (see Afrivate/private_files.py).
+    document = models.FileField(storage=PrivateRawMediaCloudinaryStorage(), upload_to=credential_file_path, max_length=255)
     is_verified = models.BooleanField(default=False)
     profile = models.ForeignKey("Profile", on_delete=models.CASCADE, blank=False, null=False, related_name="credentials")
 

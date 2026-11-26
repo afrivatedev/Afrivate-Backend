@@ -1,5 +1,10 @@
 from rest_framework import serializers
+from rest_framework.exceptions import PermissionDenied
 from .models import EngagementRecord, TaskEntry, Certificate
+
+# Fields the volunteer may correct before sign-off. Everything else is
+# changed only by the attest / dispute actions.
+HOURS_AND_DATES_FIELDS = {'total_hours', 'end_date'}
 
 class TaskEntrySerializer(serializers.ModelSerializer):
     class Meta:
@@ -31,8 +36,24 @@ class EngagementRecordSerializer(serializers.ModelSerializer):
         read_only_fields = [
             'id', 'volunteer', 'volunteer_name', 'organization', 'organization_name',
             'opportunity', 'role_title', 'role_skill_tags', 'start_date', 'status',
-            'attested_by_user', 'attested_by_name', 'attested_at', 'created_at', 'updated_at'
+            'attested_by_user', 'attested_by_name', 'attested_at', 'created_at', 'updated_at',
+            'attestation_notes', 'dispute_reason',
         ]
+
+    def validate(self, attrs):
+        changed = HOURS_AND_DATES_FIELDS & set(attrs)
+        if not changed or self.instance is None:
+            return attrs
+
+        request = self.context.get('request')
+        if request is not None and self.instance.volunteer_id != request.user.id:
+            raise PermissionDenied("Only the volunteer can change hours or dates.")
+
+        if self.instance.is_locked:
+            message = ("Hours and dates are locked while this record is pending "
+                       "attestation or after it has been attested.")
+            raise serializers.ValidationError({field: message for field in changed})
+        return attrs
 
 class PublicCertificateSerializer(serializers.ModelSerializer):
     """

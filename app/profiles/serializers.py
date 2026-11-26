@@ -9,7 +9,7 @@ from PIL import Image
 from django.core.exceptions import ValidationError
 from django.db import transaction
 
-import cloudinary.utils
+from Afrivate.private_files import signed_private_url
 
 from django.db import models
 from profiles.models import (
@@ -35,19 +35,14 @@ class SignedCloudinaryFileField(serializers.FileField):
     def to_representation(self, value):
         if not value or not hasattr(value, 'name') or not value.name:
             return None
-            
+
+        # Documents are private. Only a short-lived signed link is returned.
+        # If a link cannot be made, return nothing. Never fall back to the public address.
         try:
-            url, _ = cloudinary.utils.cloudinary_url(
-                value.name,
-                resource_type="raw", 
-                type="upload",      
-                sign_url=True,
-                secure=True,
-            )
-            return url
-        except Exception as e:  
-            logger.error(f"Cloudinary Signature Error: {e}")
-            return value.url
+            return signed_private_url(value.name)
+        except Exception as e:
+            logger.error(f"Could not create private document link: {e}")
+            return None
 
 class SocialLinkSerializer(serializers.ModelSerializer):
     """serializer for the social link model"""
@@ -364,6 +359,44 @@ class ApplicantProfileSerializer(serializers.ModelSerializer):
             'base_details', 'social_links', 'credentials',
             'skills', 'educations', 'certifications'
         ]
+
+class PublicProfileSerializer(serializers.ModelSerializer):
+    """Base-profile fields that any signed-in user may see about someone else.
+    Leaves out contact details (email, phone, address) by design."""
+    class Meta:
+        model = Profile
+        fields = ("id", "profile_pic", "bio", "state", "country", "website")
+        read_only_fields = fields
+
+
+class PublicPathfinderProfileSerializer(serializers.ModelSerializer):
+    """What other users may see of a pathfinder. No contact details, no documents."""
+    base_details = PublicProfileSerializer(source="profile", read_only=True)
+    skills = SkillSerializer(source="pathfinder_skills", many=True, read_only=True)
+    educations = EducationSerializer(source="pathfinder_education", many=True, read_only=True)
+    certifications = CertificationSerializer(source="pathfinder_certifications", many=True, read_only=True)
+    social_links = SocialLinkSerializer(source="profile.social_links", many=True, read_only=True)
+
+    class Meta:
+        model = PathfinderProfileExtra
+        fields = [
+            'id', 'first_name', 'last_name', 'other_name', 'title',
+            'about', 'work_experience', 'languages',
+            'base_details', 'social_links', 'skills', 'educations', 'certifications',
+        ]
+        read_only_fields = fields
+
+
+class PublicEnablerProfileSerializer(serializers.ModelSerializer):
+    """What other users may see of an organisation. No contact details."""
+    base_details = PublicProfileSerializer(source="profile", read_only=True)
+    social_links = SocialLinkSerializer(source="profile.social_links", many=True, read_only=True)
+
+    class Meta:
+        model = EnablerProfileExtra
+        fields = ['id', 'name', 'employees', 'role', 'base_details', 'social_links']
+        read_only_fields = fields
+
 
 class OrganizationProfileSerializer(serializers.ModelSerializer):
     """for pathfinders viewing an Organization's profile"""
