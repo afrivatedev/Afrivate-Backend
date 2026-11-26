@@ -12,6 +12,7 @@ from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.exceptions import ValidationError
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -30,6 +31,13 @@ from user_database.serializers import (
 )
 
 from .utils import sendotp_via_email, send_signup_otp_email, send_welcome_email
+from .lockout import (
+    LOCKOUT_MESSAGE,
+    clear_failed_attempts,
+    is_locked_out,
+    record_failed_attempt,
+)
+from .sessions import revoke_all_sessions
 
 from datetime import timedelta
 
@@ -88,8 +96,18 @@ class LoginView(generics.GenericAPIView):
     throttle_scope = 'auth_login'
     
     def post(self, request, *args, **kwargs):
+        data = request.data if hasattr(request.data, 'get') else {}
+        identifier = str(data.get('username_or_email') or '').strip()
+        if is_locked_out('user', identifier):
+            return Response({"error": LOCKOUT_MESSAGE}, status=status.HTTP_429_TOO_MANY_REQUESTS)
+
         serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        try:
+            serializer.is_valid(raise_exception=True)
+        except ValidationError:
+            record_failed_attempt('user', identifier)
+            raise
+        clear_failed_attempts('user', identifier)
         user = serializer.validated_data['user']
 
         # Serializer already authenticates the user; we double-check verification here
@@ -201,11 +219,16 @@ class ResetPasswordView(generics.GenericAPIView):
 
         # The reset is authorized solely by the single-use token issued at OTP
         # verification — never by uid, which is guessable.
-        verification = EmailVerification.objects.filter(
-            token=token,
-            verification_type='password_reset',
-            is_verified=True,
-        ).select_related('user').first()
+        # Only a token issued by VerifyPasswordResetOtpView (uuid-style) counts.
+        # A 6-digit OTP must never work here, even if some other endpoint has
+        # marked its record as verified.
+        verification = None
+        if EmailVerification.is_link_token(token):
+            verification = EmailVerification.objects.filter(
+                token=token,
+                verification_type='password_reset',
+                is_verified=True,
+            ).select_related('user').first()
 
         if not verification or verification.user is None or verification.is_expired():
             return Response(
@@ -231,6 +254,9 @@ class ResetPasswordView(generics.GenericAPIView):
                 verification_type='password_reset',
             ).delete()
 
+            # Sign out every device: a reset means the old password may have been compromised.
+            revoke_all_sessions(user)
+
         logging.info(f"Password reset successfully for {user.email}")
         return Response(
             {"message": "Password reset successful. You can now login with your new password."},
@@ -252,6 +278,8 @@ class ChangePasswordView(generics.GenericAPIView):
             # new_password = serializer.validated_data['new_password']
             user.set_password(serializer.validated_data['new_password'])
             user.save()
+            # Sign out every signed-in device; this one signs in again with the new password.
+            revoke_all_sessions(user)
     
             logging.info(f"Password changed successfully for user {user.id}")
             return Response(
@@ -414,6 +442,8 @@ class ResendOtpView(generics.GenericAPIView):
 class VerifyEmailView(generics.GenericAPIView):
     permission_classes = [AllowAny]
     serializer_class = VerifyEmailSerializer
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'auth_verify_email'  # maps to 'auth_verify_email' in settings.py
     
     def get(self, request, *args, **kwargs):
         token = request.query_params.get('token')
@@ -470,6 +500,8 @@ class VerifyEmailView(generics.GenericAPIView):
 class GoogleLoginView(generics.GenericAPIView):
     permission_classes = [AllowAny]
     serializer_class = GoogleAuthSerializer
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'auth_google'
 
     def post(self, request, role='pathfinder', *args, **kwargs):
         # role comes from the URL kwargs: /google/pathfinder/ or /google/enabler/.
@@ -489,8 +521,25 @@ class GoogleLoginView(generics.GenericAPIView):
 
         try:
             # Existing user — log in without altering their stored role.
-            user = User.objects.get(email=email)
-            logging.info(f"Existing user logged in via Google: {email}")
+            user = User.objects.get(email__iexact=email)
+
+            # Suspended or deactivated accounts must not get tokens through Google either.
+            if not user.is_active or getattr(user, 'is_suspended', False):
+                return Response(
+                    {"error": "This account is not active."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+            # An address that was registered with a password but never verified could
+            # have been claimed by someone else. Google has now proven the real owner,
+            # so the old password is discarded and the account moves to Google sign-in.
+            if not user.is_email_verified:
+                user.set_unusable_password()
+                user.is_email_verified = True
+                user.auth_provider = 'google'
+                user.save()
+
+            logging.info(f"Existing user logged in via Google: user id {user.id}")
 
         except User.DoesNotExist:
             username = user_data['username']
@@ -512,7 +561,7 @@ class GoogleLoginView(generics.GenericAPIView):
                 is_email_verified=True,  # Google vouches for the email — no OTP needed
                 auth_provider='google',
             )
-            logging.info(f"New user created via Google: {email} with role {role}")
+            logging.info(f"New user created via Google: user id {user.id} with role {role}")
 
         tokens = user.tokens()
 

@@ -9,7 +9,7 @@ from opportunities.models import Opportunity
 from user_database.models import CustomUser
 
 from .authentication import AdminJWTAuthentication
-from .models import AdminNote, EntityType
+from .models import AdminActionLog, AdminNote, EntityType
 from .permissions import IsAdminPanelUser
 from .serializers import AdminNoteSerializer, ConnectionSerializer, DirectoryRowSerializer
 from .utils import account_status, csv_response, display_name, filter_users
@@ -43,6 +43,14 @@ class UserDirectoryView(AdminAPIView):
                 )
                 for u in qs
             ]
+            # Personal data left the system, so the export is recorded like any other admin action.
+            AdminActionLog.objects.create(
+                admin=request.user,
+                action_type=AdminActionLog.ActionType.EXPORT,
+                target_entity_type=EntityType.USER,
+                target_entity_id='directory',
+                reason=f"CSV export of {len(rows)} users. Filters: {request.query_params.urlencode()}"[:1000],
+            )
             return csv_response(
                 'afrivate_users.csv',
                 ['ID', 'Name', 'Email', 'Type', 'Signup Date', 'Last Active', 'Status', 'State'],
@@ -100,6 +108,12 @@ class UserDetailView(AdminAPIView):
                 'profile', 'profile__enabler_extra', 'profile__pathfinder_extra'
             ),
             id=user_id, is_superuser=False,
+        )
+        AdminActionLog.objects.create(
+            admin=request.user,
+            action_type=AdminActionLog.ActionType.VIEW_PROFILE,
+            target_entity_type=EntityType.USER,
+            target_entity_id=str(user.id),
         )
         profile = getattr(user, 'profile', None)
 

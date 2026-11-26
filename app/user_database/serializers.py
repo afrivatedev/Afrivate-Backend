@@ -210,9 +210,20 @@ class VerifyEmailSerializer(serializers.Serializer):
     # email = serializers.EmailField()    
     token = serializers.CharField(max_length=64)
 
+    # This endpoint is for email *links* only (waitlist confirmation). It has
+    # no email field, so it must never accept a 6-digit OTP or a password-reset
+    # record: anyone could otherwise guess codes across every pending record.
+    LINK_VERIFICATION_TYPES = ('waitlist', 'user_signup')
+
     def validate_token(self, value):
+        if not EmailVerification.is_link_token(value):
+            raise serializers.ValidationError("Invalid verification token.")
+
         try:
-            self.verification_obj = EmailVerification.objects.get(token=value)
+            self.verification_obj = EmailVerification.objects.get(
+                token=value,
+                verification_type__in=self.LINK_VERIFICATION_TYPES,
+            )
             
             if self.verification_obj.is_verified:
                 raise serializers.ValidationError("This verification link has already been used.")
@@ -353,6 +364,13 @@ class GoogleAuthSerializer(serializers.Serializer):
             if id_info.get('iss') not in ['accounts.google.com', 'https://accounts.google.com']:
                 raise serializers.ValidationError('Invalid token issuer.')
 
+            # Only trust the email if Google says it has verified it. Otherwise someone
+            # could sign in as an address they do not control.
+            if not id_info.get('email'):
+                raise serializers.ValidationError('Google did not return an email address.')
+            if id_info.get('email_verified') not in (True, 'true'):
+                raise serializers.ValidationError('Your Google account email is not verified.')
+
             self.id_info = id_info
             return value
 
@@ -360,11 +378,12 @@ class GoogleAuthSerializer(serializers.Serializer):
             raise serializers.ValidationError(f'Invalid Google token: {str(e)}')
 
     def get_user_data(self):
+        email = self.id_info.get('email').strip().lower()
         return {
-            'email': self.id_info.get('email'),
+            'email': email,
             'first_name': self.id_info.get('given_name', ''),
             'last_name': self.id_info.get('family_name', ''),
-            'username': self.id_info.get('email').split('@')[0],
+            'username': email.split('@')[0],
         }
     
 class SetPasswordSerializer(serializers.Serializer):

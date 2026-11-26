@@ -3,6 +3,7 @@ from rest_framework import viewsets, status, generics
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.exceptions import ValidationError
 from django.shortcuts import get_object_or_404
 import uuid
 
@@ -26,6 +27,12 @@ class EngagementRecordViewSet(viewsets.ModelViewSet):
         elif user.role == 'enabler':
             return EngagementRecord.objects.filter(organization=user)
         return EngagementRecord.objects.none()
+
+    def perform_destroy(self, instance):
+        # A signed-off record backs a certificate, so it cannot be deleted.
+        if instance.is_locked:
+            raise ValidationError({'detail': 'This record is locked and cannot be deleted.'})
+        instance.delete()
 
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated, IsEnablerUser])
     def pending_attestations(self, request):
@@ -128,19 +135,36 @@ class TaskEntryViewSet(viewsets.ModelViewSet):
             
         return TaskEntry.objects.filter(engagement_record_id=engagement_id)
 
+    def _ensure_unlocked(self, engagement):
+        # Task entries feed the hours on a certificate, so they freeze with the record.
+        if engagement.is_locked:
+            raise ValidationError({'detail': 'Tasks cannot be changed while this record is pending attestation or after it has been attested.'})
+
     def perform_create(self, serializer):
-        from rest_framework import serializers
         engagement_id = self.kwargs.get('engagement_record_id')
-        engagement = get_object_or_404(EngagementRecord, id=engagement_id)
-        
-        # Can only add tasks if in progress or disputed
-        if engagement.status not in ['in_progress', 'disputed', 'pending_attestation']:
-             raise serializers.ValidationError("Cannot add tasks to locked engagement.")
-             
+        user = self.request.user
+        # Only the volunteer or the organisation on this record may log tasks on it.
+        # Without this check any signed-in user could add hours to someone else's record.
+        if user.role == 'pathfinder':
+            owned = EngagementRecord.objects.filter(volunteer=user)
+        else:
+            owned = EngagementRecord.objects.filter(organization=user)
+        engagement = get_object_or_404(owned, id=engagement_id)
+
+        self._ensure_unlocked(engagement)
+
         # Only volunteer can add tasks in our current MVP, or coordinator can add if they need to
-        logged_by = 'volunteer' if self.request.user.role == 'pathfinder' else 'coordinator'
-        
+        logged_by = 'volunteer' if user.role == 'pathfinder' else 'coordinator'
+
         serializer.save(engagement_record=engagement, logged_by=logged_by)
+
+    def perform_update(self, serializer):
+        self._ensure_unlocked(serializer.instance.engagement_record)
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        self._ensure_unlocked(instance.engagement_record)
+        instance.delete()
 
 class PublicCertificateVerificationView(generics.RetrieveAPIView):
     """

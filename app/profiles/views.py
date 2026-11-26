@@ -184,8 +184,9 @@ class EnablerViewSet(ListAPIView):
         return EnablerProfileExtra.objects.filter(profile=user.profile)
 
 class PublicPathfinderProfileView(generics.RetrieveAPIView):
-    """allows any authenticated user to view an Pathfinders's public profile"""
-    serializer_class = PathfinderProfileSerializer
+    """allows any authenticated user to view an Pathfinders's public profile.
+    Uses the public serializer: no contact details and no documents."""
+    serializer_class = PublicPathfinderProfileSerializer
     permission_classes = (IsAuthenticated, IsVerifiedUser)
     authentication_classes = (JWTAuthentication,)
 
@@ -194,8 +195,9 @@ class PublicPathfinderProfileView(generics.RetrieveAPIView):
         return get_object_or_404(PathfinderProfileExtra, profile__user__id=user_id)
 
 class PublicEnablerProfileView(generics.RetrieveAPIView):
-    """allows any authenticated user to view a Enabler's public profile"""
-    serializer_class = EnablerProfileSerializer
+    """allows any authenticated user to view a Enabler's public profile.
+    Uses the public serializer: no contact details."""
+    serializer_class = PublicEnablerProfileSerializer
     permission_classes = (IsAuthenticated, IsVerifiedUser)
     authentication_classes = (JWTAuthentication,)
 

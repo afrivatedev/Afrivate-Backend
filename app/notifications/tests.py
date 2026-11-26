@@ -62,14 +62,79 @@ class NotificationCreateTests(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(Notification.objects.count(), 0)
 
-    def test_non_staff_type_forced_to_personal(self):
+    def test_non_staff_type_and_priority_forced(self):
         self.client.force_authenticate(user=self.enabler)
         response = self.client.post('/api/notify/notifications/', {
             'title': 'Hello', 'message': 'Hi', 'priority': 'critical',
             'type': 'system', 'recipient': self.pathfinder.id,
         }, format='json')
         self.assertEqual(response.status_code, 201)
-        self.assertEqual(Notification.objects.get().type, 'personal')
+        note = Notification.objects.get()
+        self.assertEqual(note.type, 'personal')
+        self.assertEqual(note.priority, 'info')
+
+    def test_sender_is_recorded_and_shown(self):
+        self.client.force_authenticate(user=self.enabler)
+        self.client.post('/api/notify/notifications/', {
+            'title': 'Hi', 'message': 'Hi', 'recipient': self.pathfinder.id,
+        }, format='json')
+        self.assertEqual(Notification.objects.get().sender_id, self.enabler.id)
+        self.client.force_authenticate(user=self.pathfinder)
+        listed = self.client.get('/api/notify/notifications/')
+        self.assertEqual(listed.data[0]['sender_name'], self.enabler.username)
+
+    def test_client_cannot_set_sender(self):
+        other = CustomUser.objects.create_user(
+            username='other', email='other@example.com', password='Pass123!',
+            role='enabler', is_email_verified=True,
+        )
+        self.client.force_authenticate(user=self.enabler)
+        self.client.post('/api/notify/notifications/', {
+            'title': 'Hi', 'message': 'Hi', 'recipient': self.pathfinder.id, 'sender': other.id,
+        }, format='json')
+        self.assertEqual(Notification.objects.get().sender_id, self.enabler.id)
+
+    def test_javascript_link_is_refused(self):
+        self.client.force_authenticate(user=self.enabler)
+        for bad in ['javascript:alert(1)', 'data:text/html,hi', '//evil.example', 'vbscript:x']:
+            response = self.client.post('/api/notify/notifications/', {
+                'title': 'Hi', 'message': 'Hi', 'recipient': self.pathfinder.id, 'link': bad,
+            }, format='json')
+            self.assertEqual(response.status_code, 400, bad)
+        self.assertEqual(Notification.objects.count(), 0)
+
+    def test_safe_links_are_accepted(self):
+        self.client.force_authenticate(user=self.enabler)
+        for good in ['/profile', 'https://afrivate.org/x']:
+            response = self.client.post('/api/notify/notifications/', {
+                'title': 'Hi', 'message': 'Hi', 'recipient': self.pathfinder.id, 'link': good,
+            }, format='json')
+            self.assertEqual(response.status_code, 201, good)
+
+    def test_unverified_sender_is_refused(self):
+        self.enabler.is_email_verified = False
+        self.enabler.save()
+        self.client.force_authenticate(user=self.enabler)
+        response = self.client.post('/api/notify/notifications/', {
+            'title': 'Hi', 'message': 'Hi', 'recipient': self.pathfinder.id,
+        }, format='json')
+        self.assertEqual(response.status_code, 403)
+
+    def test_inactive_recipient_is_refused(self):
+        self.pathfinder.is_active = False
+        self.pathfinder.save()
+        self.client.force_authenticate(user=self.enabler)
+        response = self.client.post('/api/notify/notifications/', {
+            'title': 'Hi', 'message': 'Hi', 'recipient': self.pathfinder.id,
+        }, format='json')
+        self.assertEqual(response.status_code, 400)
+
+    def test_long_message_is_refused(self):
+        self.client.force_authenticate(user=self.enabler)
+        response = self.client.post('/api/notify/notifications/', {
+            'title': 'Hi', 'message': 'x' * 2001, 'recipient': self.pathfinder.id,
+        }, format='json')
+        self.assertEqual(response.status_code, 400)
 
     def test_non_staff_cannot_update_or_delete(self):
         note = Notification.objects.create(

@@ -1,3 +1,4 @@
+from django.core.cache import cache
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
@@ -14,6 +15,120 @@ from datetime import timedelta
 TEST_CACHES = {
     'default': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache'},
 }
+
+
+@override_settings(CACHES=TEST_CACHES)
+class VerifyEmailEndpointTests(TestCase):
+    """verify-email is for email links only. It has no email field and no
+    login, so it must never accept a 6-digit OTP or a password-reset record.
+    Otherwise anyone can guess codes across all pending records and take over
+    an account through the password-reset flow."""
+
+    def setUp(self):
+        cache.clear()  # throttle counters live in the cache
+        self.client = APIClient()
+        self.user = CustomUser.objects.create_user(
+            username='jane', email='jane@example.com',
+            password='OldPass123!', role='pathfinder',
+            is_email_verified=True,
+        )
+        self.url = reverse('accounts:verify-email')
+        self.reset_url = reverse('accounts:reset-password')
+
+    def _reset_otp(self):
+        return EmailVerification.create_otp_verification(
+            email=self.user.email,
+            verification_type='password_reset',
+            user=self.user,
+        )
+
+    def test_rejects_password_reset_otp(self):
+        verification, otp = self._reset_otp()
+        response = self.client.post(self.url, {'token': otp}, format='json')
+        self.assertEqual(response.status_code, 400)
+        verification.refresh_from_db()
+        self.assertFalse(verification.is_verified)
+
+    def test_takeover_chain_is_blocked(self):
+        """The full attack: verify via verify-email, then reset with the OTP."""
+        verification, otp = self._reset_otp()
+
+        self.client.post(self.url, {'token': otp}, format='json')
+        response = self.client.post(self.reset_url, {
+            'token': otp,
+            'new_password': 'Hacked789!',
+            'confirm_password': 'Hacked789!',
+        }, format='json')
+
+        self.assertEqual(response.status_code, 400)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password('OldPass123!'))
+
+    def test_reset_rejects_six_digit_token_even_if_marked_verified(self):
+        """Defence in depth: the reset endpoint itself refuses an OTP-shaped
+        token, even if another code path flipped its record to verified."""
+        verification, otp = self._reset_otp()
+        verification.mark_verified()
+        response = self.client.post(self.reset_url, {
+            'token': otp,
+            'new_password': 'Hacked789!',
+            'confirm_password': 'Hacked789!',
+        }, format='json')
+        self.assertEqual(response.status_code, 400)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password('OldPass123!'))
+
+    def test_rejects_signup_otp(self):
+        """A pending signup OTP must not be guessable here either."""
+        pending = CustomUser.objects.create_user(
+            username='sam', email='sam@example.com',
+            password='OldPass123!', role='pathfinder',
+            is_email_verified=False,
+        )
+        verification, otp = EmailVerification.create_otp_verification(
+            email=pending.email,
+            verification_type='user_signup',
+            user=pending,
+        )
+        response = self.client.post(self.url, {'token': otp}, format='json')
+        self.assertEqual(response.status_code, 400)
+        pending.refresh_from_db()
+        self.assertFalse(pending.is_email_verified)
+
+    def test_rejects_password_reset_record_even_with_link_shaped_token(self):
+        verification = EmailVerification.create_verification(
+            email=self.user.email,
+            verification_type='password_reset',
+            user=self.user,
+        )
+        response = self.client.post(
+            self.url, {'token': verification.token}, format='json'
+        )
+        self.assertEqual(response.status_code, 400)
+        verification.refresh_from_db()
+        self.assertFalse(verification.is_verified)
+
+    def test_accepts_valid_waitlist_link_token(self):
+        """Regression: the real waitlist confirmation link must still work."""
+        verification = EmailVerification.create_verification(
+            email='early@example.com',
+            verification_type='waitlist',
+        )
+        response = self.client.post(
+            self.url, {'token': verification.token}, format='json'
+        )
+        self.assertEqual(response.status_code, 200)
+        verification.refresh_from_db()
+        self.assertTrue(verification.is_verified)
+
+    def test_verify_email_is_rate_limited(self):
+        for _ in range(30):
+            response = self.client.post(
+                self.url, {'token': 'f' * 32}, format='json'
+            )
+            self.assertEqual(response.status_code, 400)
+        response = self.client.post(self.url, {'token': 'f' * 32}, format='json')
+        self.assertEqual(response.status_code, 429)
 
 
 @override_settings(CACHES=TEST_CACHES)

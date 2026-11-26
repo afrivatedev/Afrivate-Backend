@@ -297,10 +297,17 @@ class OrganizationMemberPermissionTests(OrganizationsTestBase):
         response = self.client.get(reverse('organization-detail', args=[self.organization.id]))
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    def test_active_organization_visible_to_representative(self):
+    def test_active_organization_visible_to_verified_representative(self):
+        self.representative.verification_status = OrganizationRepresentative.VerificationStatus.VERIFIED
+        self.representative.save(update_fields=['verification_status'])
         self.client.force_authenticate(user=self.other_enabler)
         response = self.client.get(reverse('organization-detail', args=[self.organization.id]))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_pending_representative_cannot_see_organization(self):
+        self.client.force_authenticate(user=self.other_enabler)
+        response = self.client.get(reverse('organization-detail', args=[self.organization.id]))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
 
 class AdminOrganizationWorkflowTests(OrganizationsTestBase):

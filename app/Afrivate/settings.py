@@ -39,6 +39,13 @@ and set it as an environment variable.
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = bool(int(os.environ.get("DEBUG","0"))) # set to 0 in production
 
+# Render sets RENDER=true on every service. DEBUG exposes stack traces and
+# settings to anyone, so it is forced off there even if someone sets DEBUG=1.
+if os.environ.get("RENDER") == "true" and DEBUG:
+    import sys
+    print("WARNING: DEBUG=1 is set on Render; forcing DEBUG off. Remove it from the Render environment.", file=sys.stderr)
+    DEBUG = False
+
 if DEBUG:
     SITE_DOMAIN = "http://127.0.0.1:8000"
     FRONTEND_URL = "http://localhost:3000"
@@ -112,6 +119,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     'django.middleware.security.SecurityMiddleware',
+    'Afrivate.security_headers.ApiSecurityHeadersMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     
@@ -260,12 +268,18 @@ REST_FRAMEWORK = {
     'EXCEPTION_HANDLER': 'profiles.utils.custom_exception_handler',
     'DEFAULT_THROTTLE_CLASSES': [
         'rest_framework.throttling.ScopedRateThrottle',
+        # General per-IP limit for anonymous requests. Views that set their own
+        # throttle_classes (the auth endpoints) keep their stricter scoped limits.
+        'rest_framework.throttling.AnonRateThrottle',
     ],
     'DEFAULT_THROTTLE_RATES': {
+        'anon':                 '100/minute',
+        'auth_google':          '20/hour',
         'auth_register':        '5/hour',
         'auth_login':           '10/hour',
         'auth_otp_verify':      '10/hour',
         'auth_resend_otp':      '5/hour',
+        'auth_verify_email':    '30/hour',
         'admin_login':          '10/hour',
         'auth_forgot_password': '5/hour',
         'auth_password_reset':  '10/hour',
@@ -273,8 +287,17 @@ REST_FRAMEWORK = {
         'org_document_upload':         '60/hour',
         'org_representative_register': '10/hour',
         'org_vouch':                   '10/hour',
+        'waitlist_join':               '20/hour',
     },
 }
+
+# Rate limits use the client IP. Behind Render's proxy the X-Forwarded-For header
+# can be forged unless DRF knows how many trusted proxies sit in front of the app.
+# Set NUM_PROXIES on Render once the real count is confirmed (see SECURITY.md).
+# Left unset, DRF keeps its old behaviour (first address in the header).
+_num_proxies = os.getenv("NUM_PROXIES", "").strip()
+if _num_proxies:
+    REST_FRAMEWORK['NUM_PROXIES'] = int(_num_proxies)
 
 SWAGGER_SETTINGS = {
     "SECURITY_DEFINITIONS": {
@@ -302,11 +325,12 @@ SIMPLE_JWT = {
 _CORS_ORIGINS_DEFAULT = [
     "http://localhost:3000",
     "http://localhost:3001",  # admin dashboard dev server
-    "https://afrivate-tech.github.io",
-    "https://afrivate-backend-production.up.railway.app",
+    # Removed: afrivate-tech.github.io (no Pages site exists) and the old Railway backend host
+    # (replaced by Render). Add any other origin through the CORS_ALLOWED_ORIGINS env var.
     "https://afrivate.org",
     "https://www.afrivate.org",
     "https://afrivate-volunteer-module-frontend.vercel.app",
+    "https://afrivate-volunteer-dev-branch.vercel.app",  # live volunteer site
     "https://afrivate-admin-frontend.onrender.com",
 ]
 CORS_ALLOWED_ORIGINS = list(
@@ -324,7 +348,34 @@ CSRF_TRUSTED_ORIGINS = [
 
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_ALL_ORIGINS = False
+# Admin dashboard sends this header on every request; it is the CSRF guard for cookie sessions.
+from corsheaders.defaults import default_headers as _cors_default_headers  # noqa: E402
+CORS_ALLOW_HEADERS = (*_cors_default_headers, "x-admin-request")
+# Admin session cookies use SameSite=None so the cross-site call works (needs Secure). See SECURITY.md.
+ADMIN_COOKIE_SAMESITE = os.getenv("ADMIN_COOKIE_SAMESITE", "None")
 PASSWORD_RESET_TIMEOUT = 3600  # 1 hour in seconds
+
+# --- Transport and cookie security -------------------------------------------
+# Production only (DEBUG off). Render ends TLS at its proxy and tells Django the
+# original scheme through X-Forwarded-Proto.
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SECURE_SSL_REDIRECT = os.getenv("SECURE_SSL_REDIRECT", "1") == "1"
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    # HSTS tells browsers to use HTTPS only. Start short (1 day) so a mistake is
+    # recoverable, then raise SECURE_HSTS_SECONDS (for example 31536000) once HTTPS is
+    # confirmed everywhere. Subdomains and preload are deliberately off.
+    SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "86400"))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+    SECURE_HSTS_PRELOAD = False
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_REFERRER_POLICY = "same-origin"
+X_FRAME_OPTIONS = "DENY"
+
+# Swagger, ReDoc and the DRF browsable-API login list every endpoint and are public.
+# They are on in local development only, unless ENABLE_API_DOCS=1 is set on purpose.
+ENABLE_API_DOCS = DEBUG or os.getenv("ENABLE_API_DOCS", "0") == "1"
 
 
 LOGGING = {
@@ -354,7 +405,7 @@ LOGGING = {
         },
         'waitlist': {  
             'handlers': ['console'],
-            'level': 'DEBUG',
+            'level': 'INFO',  # DEBUG would log email addresses and tracebacks
             'propagate': False,
         },
     },
@@ -434,6 +485,11 @@ CACHES = {
         }
     }
 }
+
+import sys  # noqa: E402
+if "test" in sys.argv:
+    # Tests must not need a Redis server. Rate-limit counters live in memory instead.
+    CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
 
 # celery configuration for background tasks (like sending emails, processing notifications, etc.)
 

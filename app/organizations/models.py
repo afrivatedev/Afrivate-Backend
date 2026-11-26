@@ -139,6 +139,10 @@ class OrganizationDocument(models.Model):
         max_length=255,
     )
     uploaded_at = models.DateTimeField(auto_now_add=True)
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='uploaded_organization_documents',
+    )
     reviewed_by_admin = models.ForeignKey(
         AdminUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='reviewed_org_documents'
     )
@@ -296,6 +300,7 @@ class VerificationAuditLog(models.Model):
         REINSTATED = 'reinstated', 'Reinstated'
         INFO_REQUESTED = 'info_requested', 'More Information Requested'
         REVOKED = 'revoked', 'Revoked'
+        VIEWED_DOCUMENTS = 'viewed_documents', 'Viewed Documents'
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     entity_type = models.CharField(max_length=20, choices=EntityType.choices, db_index=True)
