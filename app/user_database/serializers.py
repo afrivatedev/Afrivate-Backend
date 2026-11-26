@@ -364,6 +364,13 @@ class GoogleAuthSerializer(serializers.Serializer):
             if id_info.get('iss') not in ['accounts.google.com', 'https://accounts.google.com']:
                 raise serializers.ValidationError('Invalid token issuer.')
 
+            # Only trust the email if Google says it has verified it. Otherwise someone
+            # could sign in as an address they do not control.
+            if not id_info.get('email'):
+                raise serializers.ValidationError('Google did not return an email address.')
+            if id_info.get('email_verified') not in (True, 'true'):
+                raise serializers.ValidationError('Your Google account email is not verified.')
+
             self.id_info = id_info
             return value
 
@@ -371,11 +378,12 @@ class GoogleAuthSerializer(serializers.Serializer):
             raise serializers.ValidationError(f'Invalid Google token: {str(e)}')
 
     def get_user_data(self):
+        email = self.id_info.get('email').strip().lower()
         return {
-            'email': self.id_info.get('email'),
+            'email': email,
             'first_name': self.id_info.get('given_name', ''),
             'last_name': self.id_info.get('family_name', ''),
-            'username': self.id_info.get('email').split('@')[0],
+            'username': email.split('@')[0],
         }
     
 class SetPasswordSerializer(serializers.Serializer):

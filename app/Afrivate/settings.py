@@ -268,8 +268,13 @@ REST_FRAMEWORK = {
     'EXCEPTION_HANDLER': 'profiles.utils.custom_exception_handler',
     'DEFAULT_THROTTLE_CLASSES': [
         'rest_framework.throttling.ScopedRateThrottle',
+        # General per-IP limit for anonymous requests. Views that set their own
+        # throttle_classes (the auth endpoints) keep their stricter scoped limits.
+        'rest_framework.throttling.AnonRateThrottle',
     ],
     'DEFAULT_THROTTLE_RATES': {
+        'anon':                 '100/minute',
+        'auth_google':          '20/hour',
         'auth_register':        '5/hour',
         'auth_login':           '10/hour',
         'auth_otp_verify':      '10/hour',
@@ -320,11 +325,12 @@ SIMPLE_JWT = {
 _CORS_ORIGINS_DEFAULT = [
     "http://localhost:3000",
     "http://localhost:3001",  # admin dashboard dev server
-    "https://afrivate-tech.github.io",
-    "https://afrivate-backend-production.up.railway.app",
+    "https://afrivate-tech.github.io",  # owner unconfirmed: remove once confirmed unused
+    "https://afrivate-backend-production.up.railway.app",  # old Railway host, owner unconfirmed
     "https://afrivate.org",
     "https://www.afrivate.org",
     "https://afrivate-volunteer-module-frontend.vercel.app",
+    "https://afrivate-volunteer-dev-branch.vercel.app",  # live volunteer site
     "https://afrivate-admin-frontend.onrender.com",
 ]
 CORS_ALLOWED_ORIGINS = list(
@@ -479,6 +485,11 @@ CACHES = {
         }
     }
 }
+
+import sys  # noqa: E402
+if "test" in sys.argv:
+    # Tests must not need a Redis server. Rate-limit counters live in memory instead.
+    CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
 
 # celery configuration for background tasks (like sending emails, processing notifications, etc.)
 

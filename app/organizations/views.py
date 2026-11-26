@@ -55,8 +55,14 @@ class MyOrganizationsView(ListAPIView):
         if getattr(self, 'swagger_fake_view', False):
             return Organization.objects.none()
         user = self.request.user
+        # Representatives count only once verified; a pending applicant must not
+        # get documents (with their signed links) for an organization they don't represent yet.
         return Organization.objects.filter(
-            Q(created_by=user) | Q(representatives__user=user)
+            Q(created_by=user)
+            | Q(
+                representatives__user=user,
+                representatives__verification_status=OrganizationRepresentative.VerificationStatus.VERIFIED,
+            )
         ).distinct().prefetch_related('documents', 'social_links', 'representatives')
 
 
@@ -107,7 +113,7 @@ class OrganizationDocumentListCreateView(ListCreateAPIView):
 
     def perform_create(self, serializer):
         organization = _get_member_organization(self.request, self.kwargs['org_id'])
-        serializer.save(organization=organization)
+        serializer.save(organization=organization, uploaded_by=self.request.user)
 
 
 class OrganizationDocumentDeleteView(DestroyAPIView):

@@ -15,6 +15,13 @@ from .authentication import (
     require_admin_request,
     set_admin_cookies,
 )
+from Authentication.lockout import (
+    LOCKOUT_MESSAGE,
+    clear_failed_attempts,
+    is_locked_out,
+    record_failed_attempt,
+)
+
 from .models import AdminUser
 from .permissions import IsAdminPanelUser
 from .serializers import AdminLoginSerializer, AdminUserSerializer
@@ -29,8 +36,19 @@ class AdminLoginView(APIView):
 
     def post(self, request):
         require_admin_request(request)
+        data = request.data if hasattr(request.data, 'get') else {}
+        identifier = str(data.get('email') or '').strip().lower()
+        # Locked per admin account, not per IP, so a spoofed X-Forwarded-For does not reset it.
+        if is_locked_out('admin', identifier):
+            return Response({'detail': LOCKOUT_MESSAGE}, status=status.HTTP_429_TOO_MANY_REQUESTS)
+
         serializer = AdminLoginSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        try:
+            serializer.is_valid(raise_exception=True)
+        except exceptions.ValidationError:
+            record_failed_attempt('admin', identifier)
+            raise
+        clear_failed_attempts('admin', identifier)
         admin = serializer.validated_data['admin']
 
         admin.last_login = timezone.now()

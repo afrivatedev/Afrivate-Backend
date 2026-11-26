@@ -71,6 +71,12 @@ class OrganizationAdminDetailView(AdminAPIView):
             ),
             id=org_id,
         )
+        # The response carries signed links to private certificates and contact details of representatives.
+        _log(
+            VerificationAuditLog.EntityType.ORGANIZATION, organization.id,
+            VerificationAuditLog.Action.VIEWED_DOCUMENTS, request.user,
+            notes="Opened review page with documents, links and representatives.",
+        )
         return Response(OrganizationAdminSerializer(organization).data)
 
 

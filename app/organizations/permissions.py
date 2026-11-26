@@ -1,5 +1,5 @@
 from rest_framework.permissions import BasePermission
-from .models import Organization
+from .models import Organization, OrganizationRepresentative
 
 
 class IsOrganizationOwner(BasePermission):
@@ -12,13 +12,14 @@ class IsOrganizationOwner(BasePermission):
 
 
 class IsOrganizationMember(BasePermission):
-    """Allows access to the organization's creator or any of its representatives
-    (at any verification status — this gates visibility, not attestation rights).
+    """Allows access to the organization's creator or a VERIFIED representative.
+
+    A pending or rejected representative applicant is not a member: they can
+    see only their own application (GET /representatives/me/), not the
+    organization's documents, representatives or contact details.
 
     A suspended or pending-review organization is hidden from every member —
-    creator and representatives alike. Previously this check only ran on the
-    creator branch, so a representative could still view a suspended org while
-    its own creator was locked out.
+    creator and representatives alike.
     """
 
     message = "You do not have access to this organization."
@@ -26,7 +27,10 @@ class IsOrganizationMember(BasePermission):
     def has_object_permission(self, request, view, obj):
         is_member = (
             obj.created_by_id == request.user.id
-            or obj.representatives.filter(user=request.user).exists()
+            or obj.representatives.filter(
+                user=request.user,
+                verification_status=OrganizationRepresentative.VerificationStatus.VERIFIED,
+            ).exists()
         )
         if not is_member:
             return False

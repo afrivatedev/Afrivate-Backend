@@ -3,7 +3,7 @@ from django.db.models import Exists, OuterRef, Q
 from rest_framework import viewsets, status
 from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
 from rest_framework.decorators import action
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 
 from .models import Notification
@@ -27,13 +27,16 @@ class NotificationViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         user = self.request.user
         if user.is_staff:
-            serializer.save()
+            serializer.save(sender=user)
             return
+        if not user.is_email_verified:
+            raise PermissionDenied("Please verify your email before sending notifications.")
         # Non-staff (e.g. an enabler contacting an applicant) must address a
-        # specific recipient and can only send personal notifications.
+        # specific recipient. Their messages are always personal and normal
+        # priority, and the sender is recorded so the message can be traced.
         if serializer.validated_data.get('recipient') is None:
             raise ValidationError({"recipient": "A recipient is required."})
-        serializer.save(type='personal')
+        serializer.save(sender=user, type='personal', priority='info')
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
@@ -48,7 +51,7 @@ class NotificationViewSet(viewsets.ModelViewSet):
             # it as a plain attribute without triggering additional DB queries per row.
             return Notification.objects.filter(
                 Q(recipient=user) | Q(recipient__isnull=True)
-            ).annotate(
+            ).select_related('sender').annotate(
                 current_user_read=Exists(
                     Notification.read_by.through.objects.filter(
                         notification_id=OuterRef('pk'),

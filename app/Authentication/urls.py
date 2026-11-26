@@ -12,7 +12,8 @@ urlpatterns = [
     path('register/', RegisterView.as_view(), name='register'),
     path('login/', LoginView.as_view(), name='login'),
 
-    path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'), # not used currently
+    # The plain token/ login route was removed: it had no rate limit and issued tokens
+    # without the email-verified, active and suspended checks that LoginView applies.
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     
     path('forgot-password/', ForgotPasswordView.as_view(), name='forgot-password'),

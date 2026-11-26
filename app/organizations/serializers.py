@@ -1,4 +1,5 @@
 import logging
+import time
 
 import cloudinary.utils
 from django.core.exceptions import ValidationError as DjangoValidationError
@@ -16,6 +17,9 @@ from .storage import PRIVATE_DELIVERY_TYPE
 from .validators import validate_org_document, validate_appointment_letter
 
 logger = logging.getLogger(__name__)
+
+# How long a signed link to a private document or letter stays valid.
+SIGNED_LINK_TTL_SECONDS = 15 * 60
 
 
 def normalize_and_validate_url(value):
@@ -41,14 +45,16 @@ class SignedPrivateFileField(serializers.FileField):
         if not value or not hasattr(value, 'name') or not value.name:
             return None
         try:
-            url, _ = cloudinary.utils.cloudinary_url(
+            # Expiring link: a leaked URL stops working after SIGNED_LINK_TTL_SECONDS.
+            # A fresh link is built on every API response.
+            return cloudinary.utils.private_download_url(
                 value.name,
+                "",
                 resource_type="raw",
                 type=PRIVATE_DELIVERY_TYPE,
-                sign_url=True,
-                secure=True,
+                attachment=False,
+                expires_at=int(time.time()) + SIGNED_LINK_TTL_SECONDS,
             )
-            return url
         except Exception as e:
             logger.error(f"Cloudinary Signature Error: {e}")
             return None
@@ -170,6 +176,21 @@ class OrganizationUpdateSerializer(serializers.ModelSerializer):
                 "SCUML only applies to NGOs — this field isn't relevant for this organization's type."
             )
         return value
+
+    def validate(self, attrs):
+        # Once an organization is verified (beyond Tier 3, or with a SCUML check
+        # done), its name and SCUML number are locked. Otherwise a verified
+        # organization could rename itself and keep its badge.
+        instance = self.instance
+        verified = instance.tier != Organization.Tier.TIER_3 or instance.scuml_verified_at is not None
+        if verified:
+            for field in ("name", "scuml_id"):
+                if field in attrs and (attrs[field] or "") != (getattr(instance, field) or ""):
+                    raise serializers.ValidationError({
+                        field: "This can't be changed after the organization is verified. "
+                               "Contact the Afrivate team to make this change.",
+                    })
+        return attrs
 
 
 class OrganizationSerializer(serializers.ModelSerializer):

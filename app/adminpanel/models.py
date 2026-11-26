@@ -53,6 +53,7 @@ class EntityType(models.TextChoices):
     PATHFINDER = 'pathfinder', 'Pathfinder'
     ENABLER = 'enabler', 'Enabler'
     CONNECTION = 'connection', 'Connection'
+    USER = 'user', 'User'
 
 
 class AdminNote(models.Model):
@@ -85,6 +86,8 @@ class AdminActionLog(models.Model):
         EDIT_PROFILE = 'edit_profile', 'Edit Profile'
         UPDATE_CONNECTION_STATUS = 'update_connection_status', 'Update Connection Status'
         SEND_MESSAGE = 'send_message', 'Send Message'
+        VIEW_PROFILE = 'view_profile', 'View Profile'
+        EXPORT = 'export', 'Export'
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     admin = models.ForeignKey(AdminUser, on_delete=models.CASCADE, related_name='actions')
