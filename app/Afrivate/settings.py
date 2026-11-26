@@ -325,8 +325,8 @@ SIMPLE_JWT = {
 _CORS_ORIGINS_DEFAULT = [
     "http://localhost:3000",
     "http://localhost:3001",  # admin dashboard dev server
-    "https://afrivate-tech.github.io",  # owner unconfirmed: remove once confirmed unused
-    "https://afrivate-backend-production.up.railway.app",  # old Railway host, owner unconfirmed
+    # Removed: afrivate-tech.github.io (no Pages site exists) and the old Railway backend host
+    # (replaced by Render). Add any other origin through the CORS_ALLOWED_ORIGINS env var.
     "https://afrivate.org",
     "https://www.afrivate.org",
     "https://afrivate-volunteer-module-frontend.vercel.app",

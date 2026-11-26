@@ -144,6 +144,12 @@ class AnonymousLimitTests(TestCase):
 
 
 class CorsListTests(SimpleTestCase):
+    def test_retired_origins_removed(self):
+        self.assertNotIn('https://afrivate-tech.github.io', settings.CORS_ALLOWED_ORIGINS)
+        self.assertNotIn(
+            'https://afrivate-backend-production.up.railway.app', settings.CORS_ALLOWED_ORIGINS
+        )
+
     def test_live_sites_are_allowed(self):
         for origin in (
             'https://afrivate.org',
