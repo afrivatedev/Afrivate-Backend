@@ -161,3 +161,13 @@ marimo/_lsp/
 __marimo__/
 
 Afrivate-Backend.env
+
+# Secrets, keys and database files must never be committed
+.env.*
+!.env.example
+*.sqlite3
+*.pem
+*.key
+*.p12
+*.pfx
+*.dump

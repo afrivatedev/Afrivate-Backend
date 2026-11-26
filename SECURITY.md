@@ -66,8 +66,13 @@ Anything over the limit returns HTTP 429.
 - Never commit a real value. If one is committed, rotate it first, then remove it from git history.
 
 **Production settings**
-- `DEBUG` must be `0` in production. The default in code is `0`.
-- Error pages must never show stack traces or internal details.
+- `DEBUG` must be `0` in production. The default in code is `0`. On Render (`RENDER=true`) it is forced off even if `DEBUG=1` is set.
+- Error pages must never show stack traces or internal details. 400, 403, 404 and 500 return short JSON (`Afrivate/error_views.py`).
+- With `DEBUG` off the app redirects HTTP to HTTPS, marks session and CSRF cookies `Secure`, and sends HSTS (default 1 day; raise `SECURE_HSTS_SECONDS` once HTTPS is confirmed everywhere).
+- API responses carry a strict Content Security Policy, a Permissions-Policy and `Cache-Control: no-store` (`Afrivate/security_headers.py`). Django admin, API docs and static files are exempt from the CSP.
+- Swagger, ReDoc and the DRF browsable-API login are routed only in local development, or when `ENABLE_API_DOCS=1` is set on purpose.
+- Rate limits use the client IP. Set `NUM_PROXIES` on Render to the number of trusted proxies in front of the app, so a forged `X-Forwarded-For` header cannot dodge them. Check the value against a real request before setting it: too low trusts a forged header, too high groups real users behind one shared IP.
+- Environment variables for these settings: `NUM_PROXIES`, `SECURE_SSL_REDIRECT` (default `1`), `SECURE_HSTS_SECONDS` (default `86400`), `ENABLE_API_DOCS` (default `0`).
 
 **CORS**
 - Only Afrivate's own domains may be listed in `CORS_ALLOWED_ORIGINS` and `CSRF_TRUSTED_ORIGINS`.

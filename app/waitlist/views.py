@@ -20,6 +20,7 @@ class WaitlistEmailView(generics.GenericAPIView):
     """ waitlist email submissions!!"""
     serializer_class = WaitlistEmailSerializer
     permission_classes = [AllowAny]
+    throttle_scope = 'waitlist_join'  # public endpoint: limit per IP (see REST_FRAMEWORK in settings)
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)

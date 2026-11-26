@@ -119,6 +119,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     'django.middleware.security.SecurityMiddleware',
+    'Afrivate.security_headers.ApiSecurityHeadersMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     
@@ -281,8 +282,17 @@ REST_FRAMEWORK = {
         'org_document_upload':         '60/hour',
         'org_representative_register': '10/hour',
         'org_vouch':                   '10/hour',
+        'waitlist_join':               '20/hour',
     },
 }
+
+# Rate limits use the client IP. Behind Render's proxy the X-Forwarded-For header
+# can be forged unless DRF knows how many trusted proxies sit in front of the app.
+# Set NUM_PROXIES on Render once the real count is confirmed (see SECURITY.md).
+# Left unset, DRF keeps its old behaviour (first address in the header).
+_num_proxies = os.getenv("NUM_PROXIES", "").strip()
+if _num_proxies:
+    REST_FRAMEWORK['NUM_PROXIES'] = int(_num_proxies)
 
 SWAGGER_SETTINGS = {
     "SECURITY_DEFINITIONS": {
@@ -339,6 +349,28 @@ CORS_ALLOW_HEADERS = (*_cors_default_headers, "x-admin-request")
 ADMIN_COOKIE_SAMESITE = os.getenv("ADMIN_COOKIE_SAMESITE", "None")
 PASSWORD_RESET_TIMEOUT = 3600  # 1 hour in seconds
 
+# --- Transport and cookie security -------------------------------------------
+# Production only (DEBUG off). Render ends TLS at its proxy and tells Django the
+# original scheme through X-Forwarded-Proto.
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SECURE_SSL_REDIRECT = os.getenv("SECURE_SSL_REDIRECT", "1") == "1"
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    # HSTS tells browsers to use HTTPS only. Start short (1 day) so a mistake is
+    # recoverable, then raise SECURE_HSTS_SECONDS (for example 31536000) once HTTPS is
+    # confirmed everywhere. Subdomains and preload are deliberately off.
+    SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "86400"))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+    SECURE_HSTS_PRELOAD = False
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_REFERRER_POLICY = "same-origin"
+X_FRAME_OPTIONS = "DENY"
+
+# Swagger, ReDoc and the DRF browsable-API login list every endpoint and are public.
+# They are on in local development only, unless ENABLE_API_DOCS=1 is set on purpose.
+ENABLE_API_DOCS = DEBUG or os.getenv("ENABLE_API_DOCS", "0") == "1"
+
 
 LOGGING = {
     'version': 1,
@@ -367,7 +399,7 @@ LOGGING = {
         },
         'waitlist': {  
             'handlers': ['console'],
-            'level': 'DEBUG',
+            'level': 'INFO',  # DEBUG would log email addresses and tracebacks
             'propagate': False,
         },
     },

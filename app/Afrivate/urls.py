@@ -15,6 +15,7 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 
+from django.conf import settings
 from django.contrib import admin
 from django.urls import path, include
 
@@ -36,12 +37,6 @@ schema_view = get_schema_view(
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    
-    # API Documentation
-    path('api/v1/docs/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
-    path('docs/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
-    
-    path('api-auth/', include('rest_framework.urls')),  # Django REST framework login/logout views
 
     # app's urls 
     path("", Authentication.views.index,),  # Added to serve index view
@@ -56,6 +51,21 @@ urlpatterns = [
     path("api/admin/", include("adminpanel.urls")),  # internal admin dashboard (AdminUser auth only)
     path("api/organizations/", include("organizations.urls")),
 ]
+
+# API documentation and the DRF browsable-API login are public and list every endpoint.
+# They are served in local development, or when ENABLE_API_DOCS=1 is set on purpose.
+if settings.ENABLE_API_DOCS:
+    urlpatterns += [
+        path('api/v1/docs/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
+        path('docs/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
+        path('api-auth/', include('rest_framework.urls')),  # DRF login/logout views
+    ]
+
+# JSON error pages. Django uses these when DEBUG is off, so no internals are shown.
+handler400 = 'Afrivate.error_views.bad_request'
+handler403 = 'Afrivate.error_views.forbidden'
+handler404 = 'Afrivate.error_views.not_found'
+handler500 = 'Afrivate.error_views.server_error'
 
 # Media files are served by Cloudinary (see STORAGES in settings.py),
 # so no local /media/ route is needed, even in DEBUG.
